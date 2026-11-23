@@ -1,0 +1,499 @@
+:root {
+  color-scheme: dark;
+  color: #dce5de;
+  background: #111713;
+}
+
+html,
+body,
+#root,
+.app-shell {
+  background: #111713;
+  color: #dce5de;
+}
+
+.sidebar,
+.topbar {
+  border-color: #2b3930;
+  background: #171f1a;
+}
+
+.brand-mark {
+  background: #23392a;
+  color: #9bd0a7;
+}
+
+.brand strong,
+.breadcrumbs strong,
+.page-heading h1,
+.panel-heading h2,
+.budget-group-heading h2,
+.settings-card h2,
+.dialog-heading h2 {
+  color: #e4ece6;
+}
+
+.brand small,
+.sidebar-label,
+.sidebar-footnote,
+.breadcrumbs,
+.page-description,
+.stat-card small,
+.panel-heading p,
+.muted-copy,
+.budget-topline span,
+.budget-group-totals,
+.settings-card > p:not(.eyebrow),
+.settings-list,
+.privacy-caption {
+  color: #a0aea4;
+}
+
+.nav-item {
+  color: #b0bbb3;
+}
+
+.nav-item:hover,
+.nav-item.active {
+  background: #233329;
+  color: #a4d5ae;
+}
+
+.nav-count,
+.local-card,
+.stat-card,
+.panel,
+.cashflow-strip,
+.budget-topline > div,
+.form-footer,
+.activity-dialog,
+.dialog-close {
+  border-color: #2b3930;
+  background: #1a231d;
+  color: #dce5de;
+}
+
+.local-card strong,
+.stat-card strong,
+.group-summary-name,
+.budget-group-totals strong,
+.currency-input,
+.form-currency-input {
+  color: #dce5de;
+}
+
+.stat-top,
+.progress-copy {
+  color: #a0aea4;
+}
+
+.stat-icon {
+  background: #29372d;
+  color: #a4d5ae;
+}
+
+.local-card p,
+.sidebar-footnote,
+.group-summary-amount,
+.group-detail-row,
+.activity-description,
+.activity-note,
+.settings-warning .eyebrow {
+  color: #9eaca2;
+}
+
+.local-indicator {
+  background: #d9b36b;
+  box-shadow: 0 0 0 3px #332c1e;
+}
+
+.month-picker input,
+.search-field,
+.currency-input,
+.form-currency-input,
+.activity-form input,
+.activity-form select,
+.activity-form textarea {
+  border-color: #34443a;
+  background: #141b16;
+  color: #dce5de;
+}
+
+.search-field input,
+.currency-input input,
+.form-currency-input input {
+  color: #dce5de;
+}
+
+.search-field input::placeholder,
+.activity-form input::placeholder,
+.activity-form textarea::placeholder {
+  color: #7f8e84;
+}
+
+.button-secondary {
+  border-color: #3a4b3e;
+  background: #222e25;
+  color: #d7e3d9;
+}
+
+.button-secondary:hover {
+  background: #2a392e;
+}
+
+.button-primary {
+  background: #3d7652;
+  color: #f0f8f1;
+}
+
+.button-primary:hover {
+  background: #4a8960;
+}
+
+.button-danger {
+  border-color: #68403e;
+  background: #3a2524;
+  color: #f0b0a9;
+}
+
+.text-button,
+.eyebrow {
+  color: #91c69d;
+}
+
+.phase-banner {
+  border-color: #51472e;
+  background: #29261e;
+  color: #d5c795;
+}
+
+.phase-badge {
+  background: #3b3424;
+  color: #e4cf8f;
+}
+
+.message-error {
+  border-color: #623b3b;
+  background: #352020;
+  color: #ffaaa1;
+}
+
+.message-success {
+  border-color: #31523a;
+  background: #1c3021;
+  color: #a8d7af;
+}
+
+.setup-callout {
+  border-color: #31523a;
+  background: #1b2b20;
+  color: #dce5de;
+}
+
+.setup-callout strong {
+  color: #dce5de;
+}
+
+.setup-callout p {
+  color: #a0aea4;
+}
+
+.stat-mint {
+  border-color: #2a4a34;
+  background: #1b2b21;
+}
+
+.stat-mint .stat-icon {
+  background: #27412e;
+  color: #a2d4ab;
+}
+
+.stat-peach {
+  border-color: #4b372a;
+  background: #2b241f;
+}
+
+.stat-peach .stat-icon {
+  background: #433126;
+  color: #e0b48d;
+}
+
+.stat-lavender {
+  border-color: #41394d;
+  background: #272330;
+}
+
+.stat-lavender .stat-icon {
+  background: #393147;
+  color: #c4b2e2;
+}
+
+.stat-over-budget {
+  border-color: #713e3e;
+  background: #342020;
+}
+
+.stat-over-budget strong,
+.stat-over-budget small,
+.over-budget-amount,
+.over-budget-label,
+.budget-group-totals .over-budget-amount strong,
+.over-budget .group-summary-amount,
+.over-budget .group-summary-amount small {
+  color: #ff8f87;
+}
+
+.overall-progress {
+  background: #202a23;
+}
+
+.progress-copy strong {
+  color: #a4d5ae;
+}
+
+.progress-track,
+.group-progress-mini {
+  background: #303d33;
+}
+
+.progress-track.over-budget-track > span,
+.over-budget .group-progress-mini > span {
+  background: #db625e;
+}
+
+.group-summary {
+  border-color: #2b3930;
+}
+
+.group-summary summary:hover {
+  background: #202b23;
+}
+
+.group-detail-list {
+  border-top-color: #2b3930;
+}
+
+.group-detail-row {
+  border-bottom-color: #29362d;
+}
+
+.group-detail-row > span:last-child {
+  color: #d0dbd2;
+}
+
+.group-detail-row > .over-budget-amount {
+  color: #ff8f87;
+}
+
+.dot-expense {
+  background: #83b68d;
+}
+
+.dot-debt {
+  background: #d7a47f;
+}
+
+.dot-savings {
+  background: #b7a3d8;
+}
+
+.dot-income {
+  background: #79b89a;
+}
+
+.dot-allocation {
+  background: #8ea6c5;
+}
+
+.activity-row {
+  border-bottom-color: #29362d;
+}
+
+.activity-avatar {
+  background: #26332a;
+  color: #a7cfad;
+}
+
+.avatar-income {
+  background: #203629;
+  color: #9bd0a7;
+}
+
+.avatar-savings {
+  background: #30293c;
+  color: #c4b2e2;
+}
+
+.avatar-allocation {
+  background: #38311f;
+  color: #dbc27d;
+}
+
+.activity-main strong {
+  color: #dce5de;
+}
+
+.activity-main > span,
+.activity-date,
+.row-edit {
+  color: #9eaca2;
+}
+
+.activity-amount {
+  color: #dce5de;
+}
+
+.amount-income {
+  color: #9bd0a7;
+}
+
+.danger-text {
+  color: #ff9990;
+}
+
+.empty-state {
+  color: #a0aea4;
+}
+
+.empty-mark {
+  background: #26372b;
+  color: #a4d5ae;
+}
+
+.empty-state > strong {
+  color: #dce5de;
+}
+
+.empty-state > p {
+  color: #9eaca2;
+}
+
+.cashflow-strip span {
+  color: #9eaca2;
+}
+
+.cashflow-strip strong {
+  color: #dce5de;
+}
+
+.cashflow-minus,
+.cashflow-equals {
+  color: #829087 !important;
+}
+
+.cashflow-ending {
+  border-left-color: #34443a;
+}
+
+.cashflow-ending strong {
+  color: #a4d5ae;
+}
+
+.highlight-budget {
+  border-color: #31523a !important;
+  background: #1b2b20 !important;
+}
+
+.highlight-budget strong,
+.derived-amount {
+  color: #9bd0a7;
+}
+
+.budget-group-totals strong {
+  color: #dce5de;
+}
+
+.budget-category-row,
+.budget-category-label strong {
+  color: #d3ded5;
+}
+
+.budget-category-row {
+  border-top-color: #2b3930;
+}
+
+.category-group-note {
+  color: #a0aea4;
+}
+
+.category-group-note strong {
+  color: #dce5de;
+}
+
+.category-form-error {
+  color: #ffaaa1;
+}
+
+.budget-category-row.over-budget-row {
+  background: #2a1d1d;
+}
+
+.over-budget-row .currency-input {
+  border-color: #71403e;
+}
+
+.budget-category-label .over-budget-amount {
+  color: #ff8f87;
+}
+
+.form-footer > span,
+.derived-amount small,
+.budget-category-label small {
+  color: #94a298;
+}
+
+.settings-warning {
+  border-color: #553735;
+}
+
+.settings-warning .eyebrow {
+  color: #e2a49b;
+}
+
+.modal-backdrop {
+  background: rgb(0 0 0 / 65%);
+}
+
+.activity-dialog {
+  box-shadow: 0 20px 60px rgb(0 0 0 / 40%);
+}
+
+.dialog-close {
+  border-color: #34443a;
+  background: #202a23;
+  color: #c3cec6;
+}
+
+.activity-form label {
+  color: #c7d2ca;
+}
+
+.activity-form label small {
+  color: #94a298;
+}
+
+.dialog-actions {
+  border-top-color: #2b3930;
+}
+
+.mobile-nav {
+  border-top-color: #2b3930;
+  background: #171f1a;
+}
+
+.mobile-nav button {
+  color: #a0aea4;
+}
+
+.mobile-nav button.active {
+  color: #9bd0a7;
+}
+
+::selection {
+  background: #355a40;
+  color: #f0f8f1;
+}
+
+:focus-visible {
+  outline-color: #83bd91;
+}
