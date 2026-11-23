@@ -4,6 +4,7 @@ import {
   formatMoney,
   getCurrentMonthKey,
   getMonthLabel,
+  getPreviousMonthKey,
   parseMoneyToCents,
   summarizeBudget,
 } from './domain/budget'
@@ -62,6 +63,7 @@ function App() {
   const [showActivityForm, setShowActivityForm] = useState(false)
   const [editingCategory, setEditingCategory] = useState(null)
   const [categoryFormGroupId, setCategoryFormGroupId] = useState(null)
+  const [budgetFormRevision, setBudgetFormRevision] = useState(0)
   const [error, setError] = useState(initialBudgetState.error)
   const [notice, setNotice] = useState('')
 
@@ -184,6 +186,38 @@ function App() {
       },
     }
     if (persist(nextData)) setNotice('Monthly budgets saved.')
+  }
+
+  function copyPreviousMonthBudget() {
+    const previousMonth = getPreviousMonthKey(month)
+    const previousMonthBudgets =
+      data.budgetsByMonth[previousMonth] ?? data.budgetTemplate ?? EMPTY_BUDGETS
+    if (!Object.keys(previousMonthBudgets).length) {
+      setError(`There is no saved budget plan for ${getMonthLabel(previousMonth)} to copy.`)
+      return
+    }
+
+    if (
+      data.budgetsByMonth[month] &&
+      !window.confirm(
+        `Replace ${getMonthLabel(month)}'s plan with ${getMonthLabel(previousMonth)}'s plan?`,
+      )
+    ) {
+      return
+    }
+
+    if (persist({
+      ...data,
+      budgetsByMonth: {
+        ...data.budgetsByMonth,
+        [month]: { ...previousMonthBudgets },
+      },
+    })) {
+      setBudgetFormRevision((revision) => revision + 1)
+      setNotice(
+        `Copied ${getMonthLabel(previousMonth)}'s plan to ${getMonthLabel(month)}.`,
+      )
+    }
   }
 
   function openCategoryForm(groupId, category = null) {
@@ -510,8 +544,10 @@ function App() {
               month={month}
               groups={summary.byGroup}
               summary={summary}
+              budgetFormRevision={budgetFormRevision}
               onSave={saveBudgets}
               onExport={exportBudgetCsv}
+              onCopyPrevious={copyPreviousMonthBudget}
               onAddCategory={(groupId) => openCategoryForm(groupId)}
               onEditCategory={(category) => openCategoryForm(category.groupId, category)}
             />
@@ -883,8 +919,10 @@ function BudgetsPage({
   month,
   groups,
   summary,
+  budgetFormRevision,
   onSave,
   onExport,
+  onCopyPrevious,
   onAddCategory,
   onEditCategory,
 }) {
@@ -893,8 +931,19 @@ function BudgetsPage({
       <PageHeading
         eyebrow={getMonthLabel(month).toUpperCase()}
         title="Monthly plan"
-        description="Set a plan for each category. Fun money is calculated equally from the remaining amount."
-        action={<button className="button button-secondary" onClick={onExport}>Export budget CSV</button>}
+        description="Set a plan for each category. Copy the previous month to start from that plan; activity is not copied."
+        action={
+          <div className="page-heading-actions">
+            <button
+              className="button button-secondary"
+              onClick={onCopyPrevious}
+              title={`Copy ${getMonthLabel(getPreviousMonthKey(month))} plan to ${getMonthLabel(month)}`}
+            >
+              Copy previous month
+            </button>
+            <button className="button button-secondary" onClick={onExport}>Export budget CSV</button>
+          </div>
+        }
       />
       <div className="budget-topline">
         <div><span>Income planned</span><strong>{formatMoney(summary.plannedIncomeCents)}</strong></div>
@@ -902,7 +951,7 @@ function BudgetsPage({
         <div><span>Savings planned</span><strong>{formatMoney(summary.plannedSavingsCents)}</strong></div>
         <div className="highlight-budget"><span>Fun money each</span><strong>{formatMoney(summary.perPersonFunMoneyCents)}</strong></div>
       </div>
-      <form className="budget-groups" key={month} onSubmit={onSave}>
+      <form className="budget-groups" key={`${month}-${budgetFormRevision}`} onSubmit={onSave}>
         {groups.map((group) => (
           <section className="panel budget-group-panel" key={group.id}>
             <div className={`budget-group-heading${group.isOverBudget ? ' over-budget' : ''}`}>
@@ -922,10 +971,14 @@ function BudgetsPage({
                 )}
                 <div className="budget-group-totals">
                   <span className={group.isOverBudget ? 'over-budget-amount' : ''}>
-                    Actual <strong>{formatMoney(group.actualCents)}</strong>
+                    <span>Actual</span>
+                    <strong>{formatMoney(group.actualCents)}</strong>
                     {group.isOverBudget && <small className="over-budget-label">Over plan</small>}
                   </span>
-                  <span>Plan <strong>{formatMoney(group.plannedCents)}</strong></span>
+                  <span>
+                    <span>Plan</span>
+                    <strong>{formatMoney(group.plannedCents)}</strong>
+                  </span>
                 </div>
               </div>
             </div>

@@ -4,6 +4,18 @@ const STORAGE_KEY = 'household-budget-phase1-v1'
 const categoryIds = new Set(categories.map((category) => category.id))
 const categoryById = new Map(categories.map((category) => [category.id, category]))
 const groupById = new Map(categoryGroups.map((group) => [group.id, group]))
+const retiredCategoryIds = {
+  'insurance:car-insurance': 'car:car-insurance',
+  'insurance:health-insurance': 'monthly-misc:healthcare',
+  'insurance:life-insurance': 'monthly-misc:healthcare',
+  'insurance:disability-insurance': 'monthly-misc:healthcare',
+  'insurance:long-term-care-ins': 'monthly-misc:healthcare',
+  'insurance:dental-insurance': 'monthly-misc:healthcare',
+}
+const retiredGroupIds = {
+  'monthly-misc': 'personal-lifestyle',
+  insurance: 'personal-lifestyle',
+}
 
 export function createInitialBudgetData(month) {
   return {
@@ -70,6 +82,7 @@ export function importBudgetBackup(serialized) {
     throw new Error('The backup file does not have the expected budget format.')
   }
 
+  data = migrateLegacyCategoryData(data)
   const customCategories = data.customCategories ?? []
   const categoryNameOverrides = data.categoryNameOverrides ?? {}
   const validCategoryIds = validateCategories(
@@ -108,6 +121,61 @@ export function importBudgetBackup(serialized) {
     customCategories,
     categoryNameOverrides,
     updatedAt: new Date().toISOString(),
+  }
+}
+
+function migrateLegacyCategoryData(data) {
+  const migrateBudgetMap = (budgets) => {
+    const migrated = { ...budgets }
+    for (const [oldId, newId] of Object.entries(retiredCategoryIds)) {
+      if (Object.hasOwn(migrated, oldId)) {
+        migrated[newId] = (migrated[newId] ?? 0) + migrated[oldId]
+        delete migrated[oldId]
+      }
+    }
+    return migrated
+  }
+
+  const categoryNameOverrides = isRecord(data.categoryNameOverrides)
+    ? { ...data.categoryNameOverrides }
+    : data.categoryNameOverrides ?? {}
+  for (const [oldId, newId] of Object.entries(retiredCategoryIds)) {
+    if (Object.hasOwn(categoryNameOverrides, oldId)) {
+      if (oldId === 'insurance:car-insurance' && !Object.hasOwn(categoryNameOverrides, newId)) {
+        categoryNameOverrides[newId] = categoryNameOverrides[oldId]
+      }
+      delete categoryNameOverrides[oldId]
+    }
+  }
+
+  return {
+    ...data,
+    budgetTemplate: migrateBudgetMap(data.budgetTemplate),
+    budgetsByMonth: Object.fromEntries(
+      Object.entries(data.budgetsByMonth).map(([month, budgets]) => [
+        month,
+        isRecord(budgets) ? migrateBudgetMap(budgets) : budgets,
+      ]),
+    ),
+    activities: data.activities.map((activity) =>
+      activity && typeof activity === 'object'
+        ? {
+            ...activity,
+            categoryId: retiredCategoryIds[activity.categoryId] ?? activity.categoryId,
+          }
+        : activity,
+    ),
+    customCategories: Array.isArray(data.customCategories)
+      ? data.customCategories.map((category) =>
+          category && typeof category === 'object'
+            ? {
+                ...category,
+                groupId: retiredGroupIds[category.groupId] ?? category.groupId,
+              }
+            : category,
+        )
+      : data.customCategories ?? [],
+    categoryNameOverrides,
   }
 }
 

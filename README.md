@@ -11,7 +11,16 @@ live sharing between devices and Firebase are planned for Phase 2.
 - Monthly plans for the workbook's category groups, with a reusable budget
   template for months that do not have their own override; add categories to
   budget groups or rename categories while keeping existing activity and
-  budgets attached.
+  budgets attached. Copy the previous month’s plan into a new month without
+  copying its activity.
+- Car expenses include car insurance and a future-ready car-payment category.
+  Former miscellaneous spending is split across food and dining, home and
+  household, personal and lifestyle, travel, and pets. Debt is kept separate
+  from car expenses, with a named fallback category for other debt payments.
+- Existing local budgets and activity are migrated when loaded: duplicate car
+  insurance amounts merge into Car, other insurance entries move into
+  Healthcare, and custom categories from the former miscellaneous or insurance
+  groups move into Personal & Lifestyle.
 - Local CSV import of category budgets, plus CSV and JSON backup/exports.
 - Responsive navigation and layouts for desktop, tablet, and phone.
 - Dark appearance by default, with above-plan spending highlighted in red

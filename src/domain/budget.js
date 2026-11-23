@@ -12,6 +12,11 @@ export function getMonthLabel(monthKey, locale = 'en-US') {
   }).format(new Date(year, month - 1, 1))
 }
 
+export function getPreviousMonthKey(monthKey) {
+  const [year, month] = monthKey.split('-').map(Number)
+  return getCurrentMonthKey(new Date(year, month - 2, 1))
+}
+
 export function formatMoney(cents, options = {}) {
   return new Intl.NumberFormat(options.locale ?? 'en-US', {
     style: 'currency',

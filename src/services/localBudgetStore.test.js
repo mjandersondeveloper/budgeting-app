@@ -33,7 +33,7 @@ describe('local budget storage', () => {
     const initial = createInitialBudgetData('2026-11')
     const customCategory = {
       id: 'custom-category-12345678',
-      groupId: 'monthly-misc',
+      groupId: 'personal-lifestyle',
       name: 'Pet Care',
       type: 'expense',
     }
@@ -55,6 +55,49 @@ describe('local budget storage', () => {
     expect(restored.customCategories).toEqual([customCategory])
     expect(restored.budgetTemplate[customCategory.id]).toBe(10000)
     expect(restored.categoryNameOverrides['home-bills:mortgage']).toBe('Home Loan')
+  })
+
+  it('migrates removed insurance categories and custom groups in older backups', () => {
+    const legacy = createInitialBudgetData('2026-11')
+    legacy.budgetTemplate = {
+      'car:car-insurance': 10000,
+      'insurance:car-insurance': 2000,
+      'insurance:health-insurance': 3000,
+      'insurance:dental-insurance': 4000,
+      'monthly-misc:healthcare': 5000,
+    }
+    legacy.activities.push(
+      {
+        id: 'car-insurance',
+        description: 'Car insurance',
+        amountCents: 5000,
+        categoryId: 'insurance:car-insurance',
+        date: '2026-11-18',
+      },
+      {
+        id: 'health-insurance',
+        description: 'Health premium',
+        amountCents: 2500,
+        categoryId: 'insurance:health-insurance',
+        date: '2026-11-18',
+      },
+    )
+    legacy.customCategories.push({
+      id: 'custom-category-87654321',
+      groupId: 'monthly-misc',
+      name: 'Books',
+      type: 'expense',
+    })
+
+    const restored = importBudgetBackup(JSON.stringify(legacy))
+    expect(restored.budgetTemplate['car:car-insurance']).toBe(12000)
+    expect(restored.budgetTemplate['monthly-misc:healthcare']).toBe(12000)
+    expect(restored.activities.map((activity) => activity.categoryId)).toEqual([
+      'car:car-insurance',
+      'monthly-misc:healthcare',
+    ])
+    expect(restored.customCategories[0].groupId).toBe('personal-lifestyle')
+    expect(restored.budgetTemplate).not.toHaveProperty('insurance:health-insurance')
   })
 
   it('rejects custom categories with an unsupported group type', () => {

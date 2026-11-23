@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { summarizeBudget, parseMoneyToCents } from './budget'
+import {
+  getPreviousMonthKey,
+  parseMoneyToCents,
+  summarizeBudget,
+} from './budget'
 
 const groups = [
   {
@@ -96,5 +100,12 @@ describe('parseMoneyToCents', () => {
     ['not a number', null],
   ])('parses %s', (value, expected) => {
     expect(parseMoneyToCents(value)).toBe(expected)
+  })
+})
+
+describe('getPreviousMonthKey', () => {
+  it('handles year boundaries', () => {
+    expect(getPreviousMonthKey('2027-01')).toBe('2026-12')
+    expect(getPreviousMonthKey('2026-11')).toBe('2026-10')
   })
 })

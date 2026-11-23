@@ -11,10 +11,13 @@ describe('importBudgetCsv', () => {
       'TOTAL MONTHLY HOUSE,1580.25',
       'CAR,',
       'Gas,100.00',
-      'Car Insurance,0',
+      'Car Insurance,25.00',
       'MONTHLY,',
       'INSURANCE,',
-      'Car Insurance,25.00',
+      'Car Insurance,70.00',
+      'MONTHLY MISC,',
+      'Costco,40.00',
+      'Home Improvement,50.00',
       'MONTHLY SAVINGS,',
       'Joint Savings,200',
       'FUN MONEY,',
@@ -26,7 +29,9 @@ describe('importBudgetCsv', () => {
     expect(result.budgetByCategoryId['home-bills:mortgage']).toBe(150000)
     expect(result.budgetByCategoryId['home-bills:gas']).toBe(8025)
     expect(result.budgetByCategoryId['car:gas']).toBe(10000)
-    expect(result.budgetByCategoryId['insurance:car-insurance']).toBe(2500)
+    expect(result.budgetByCategoryId['car:car-insurance']).toBe(2500)
+    expect(result.budgetByCategoryId['monthly-misc:costco']).toBe(4000)
+    expect(result.budgetByCategoryId['monthly-misc:home-improvement']).toBe(5000)
     expect(result.budgetByCategoryId['savings:joint-savings']).toBe(20000)
     expect(result.budgetByCategoryId['fun-money:marcus-fun-money']).toBe(0)
   })
@@ -43,18 +48,18 @@ describe('importBudgetCsv', () => {
       ...group,
       categories: [...group.categories],
     }))
-    const monthlyMisc = groupsWithCustomCategory.find(
-      (group) => group.id === 'monthly-misc',
+    const pets = groupsWithCustomCategory.find(
+      (group) => group.id === 'pets',
     )
-    monthlyMisc.categories.push({
+    pets.categories.push({
       id: 'custom-category-12345678',
-      groupId: 'monthly-misc',
+      groupId: 'pets',
       name: 'Pet Care',
       type: 'expense',
     })
 
     const result = importBudgetCsv(
-      'MONTHLY MISC,\nPet Care,125',
+      'PETS,\nPet Care,125',
       groupsWithCustomCategory,
     )
     expect(result.budgetByCategoryId['custom-category-12345678']).toBe(12500)

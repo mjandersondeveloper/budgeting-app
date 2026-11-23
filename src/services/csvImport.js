@@ -58,16 +58,22 @@ export function importBudgetCsv(text, categoryGroups = defaultCategoryGroups) {
   }
 
   const rows = parseCsvRows(text.replace(/^\uFEFF/, ''))
-  const headingToGroupId = new Map(
-    categoryGroups.map((group) => [
-      normalizeLabel(group.sheetHeading),
-      group.id,
-    ]),
-  )
+  const headingToGroups = new Map()
+  for (const group of categoryGroups) {
+    for (const [heading, isAlias] of [
+      [group.sheetHeading, false],
+      ...(group.sheetHeadingAliases ?? []).map((alias) => [alias, true]),
+    ]) {
+      const normalized = normalizeLabel(heading)
+      const mappedGroups = headingToGroups.get(normalized) ?? []
+      mappedGroups.push({ groupId: group.id, isAlias })
+      headingToGroups.set(normalized, mappedGroups)
+    }
+  }
   const budgetByCategoryId = {}
   const unmatchedRows = []
-  let activeGroupId = null
-  let expectingInsuranceHeading = false
+  let activeGroupIds = []
+  let activeHeadingIsAlias = false
 
   const categoryLookup = new Map()
   for (const group of categoryGroups) {
@@ -87,25 +93,22 @@ export function importBudgetCsv(text, categoryGroups = defaultCategoryGroups) {
     const normalized = normalizeLabel(label)
 
     if (normalized === 'monthly') {
-      expectingInsuranceHeading = true
+      activeGroupIds = []
       continue
     }
 
-    if (expectingInsuranceHeading && normalized === 'insurance') {
-      activeGroupId = headingToGroupId.get('insurance')
-      expectingInsuranceHeading = false
-      continue
-    }
-    expectingInsuranceHeading = false
-
-    if (headingToGroupId.has(normalized)) {
-      activeGroupId = headingToGroupId.get(normalized)
+    if (headingToGroups.has(normalized)) {
+      const mappedGroups = headingToGroups.get(normalized)
+      activeGroupIds = mappedGroups.map(({ groupId }) => groupId)
+      activeHeadingIsAlias = mappedGroups.every(({ isAlias }) => isAlias)
       continue
     }
 
-    if (!activeGroupId || !label || /^total\b/i.test(label)) continue
+    if (!activeGroupIds.length || !label || /^total\b/i.test(label)) continue
 
-    const category = categoryLookup.get(`${activeGroupId}:${normalized}`)
+    const category = activeGroupIds
+      .map((groupId) => categoryLookup.get(`${groupId}:${normalized}`))
+      .find(Boolean)
     if (!category) {
       unmatchedRows.push(label)
       continue
@@ -113,7 +116,9 @@ export function importBudgetCsv(text, categoryGroups = defaultCategoryGroups) {
 
     const amountCents = parseMoneyToCents(row[1])
     if (amountCents !== null) {
-      budgetByCategoryId[category.id] = amountCents
+      if (!activeHeadingIsAlias || budgetByCategoryId[category.id] === undefined) {
+        budgetByCategoryId[category.id] = amountCents
+      }
     }
   }
 

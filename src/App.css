@@ -350,6 +350,13 @@
   margin: 0 0 26px;
 }
 
+.page-heading-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .eyebrow {
   margin: 0 0 7px;
   color: #87938a;
@@ -1000,16 +1007,31 @@
 
 .budget-group-totals {
   display: flex;
+  align-items: start;
   gap: 18px;
   color: #8b958d;
   font-size: 9px;
 }
 
+.budget-group-totals > span {
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: baseline;
+  column-gap: 4px;
+}
+
 .budget-group-totals strong {
-  margin-left: 4px;
   color: #536257;
   font-size: 10px;
   font-variant-numeric: tabular-nums;
+}
+
+.over-budget-label {
+  grid-column: 2;
+  margin-top: 2px;
+  font-size: 8px;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .budget-group-controls {
@@ -1462,6 +1484,10 @@
 
   .page-description {
     font-size: 11px;
+  }
+
+  .page-heading-actions {
+    justify-content: flex-start;
   }
 
   .desktop-budget-button {

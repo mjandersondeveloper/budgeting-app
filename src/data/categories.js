@@ -1,5 +1,11 @@
-const makeCategory = (groupId, name, type, aliases = []) => ({
-  id: `${groupId}:${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+const makeCategory = (
+  groupId,
+  name,
+  type,
+  aliases = [],
+  id = `${groupId}:${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+) => ({
+  id,
   groupId,
   name,
   type,
@@ -32,45 +38,70 @@ export const categoryGroups = [
       makeCategory('car', 'Maintenance', 'expense'),
       makeCategory('car', 'Parking', 'expense'),
       makeCategory('car', 'Car Insurance', 'expense'),
+      makeCategory('car', 'Car Payment', 'expense'),
     ],
   },
   {
-    id: 'insurance',
-    name: 'Insurance',
+    id: 'food-dining',
+    name: 'Food & Dining',
     type: 'expense',
-    sheetHeading: 'INSURANCE',
+    sheetHeading: 'FOOD & DINING',
+    sheetHeadingAliases: ['MONTHLY MISC'],
     categories: [
-      makeCategory('insurance', 'Health Insurance', 'expense'),
-      makeCategory('insurance', 'Life Insurance', 'expense'),
-      makeCategory('insurance', 'Disability Insurance', 'expense'),
-      makeCategory('insurance', 'Long Term Care Ins', 'expense'),
-      makeCategory('insurance', 'Dental Insurance', 'expense'),
-      makeCategory('insurance', 'Car Insurance', 'expense'),
+      makeCategory('food-dining', 'Restaurants/Bars', 'expense', [], 'monthly-misc:restaurants-bars'),
+      makeCategory('food-dining', 'Costco', 'expense', [], 'monthly-misc:costco'),
+      makeCategory('food-dining', 'Kroger/Giant Eagle', 'expense', [], 'monthly-misc:kroger-giant-eagle'),
     ],
   },
   {
-    id: 'monthly-misc',
-    name: 'Monthly Miscellaneous',
+    id: 'home-household',
+    name: 'Home & Household',
     type: 'expense',
-    sheetHeading: 'MONTHLY MISC',
+    sheetHeading: 'HOME & HOUSEHOLD',
+    sheetHeadingAliases: ['MONTHLY MISC'],
     categories: [
-      makeCategory('monthly-misc', 'Restaurants/Bars', 'expense'),
-      makeCategory('monthly-misc', 'Costco', 'expense'),
-      makeCategory('monthly-misc', 'Kroger/Giant Eagle', 'expense'),
-      makeCategory('monthly-misc', 'Entertainment', 'expense'),
-      makeCategory('monthly-misc', 'Home Fun Stuff', 'expense'),
-      makeCategory('monthly-misc', 'Home Improvement', 'expense'),
-      makeCategory('monthly-misc', 'Home Furniture', 'expense'),
-      makeCategory('monthly-misc', 'Toiletries/Personal Care', 'expense'),
-      makeCategory('monthly-misc', 'Miscellaneous/Shopping', 'expense'),
-      makeCategory('monthly-misc', 'Gifts/Donations', 'expense'),
-      makeCategory('monthly-misc', 'Travel', 'expense'),
-      makeCategory('monthly-misc', 'Healthcare', 'expense', ['Heathcare']),
+      makeCategory('home-household', 'Home Fun Stuff', 'expense', [], 'monthly-misc:home-fun-stuff'),
+      makeCategory('home-household', 'Home Improvement', 'expense', [], 'monthly-misc:home-improvement'),
+      makeCategory('home-household', 'Home Furniture', 'expense', [], 'monthly-misc:home-furniture'),
+    ],
+  },
+  {
+    id: 'personal-lifestyle',
+    name: 'Personal & Lifestyle',
+    type: 'expense',
+    sheetHeading: 'PERSONAL & LIFESTYLE',
+    sheetHeadingAliases: ['MONTHLY MISC'],
+    categories: [
+      makeCategory('personal-lifestyle', 'Entertainment', 'expense', [], 'monthly-misc:entertainment'),
+      makeCategory('personal-lifestyle', 'Toiletries/Personal Care', 'expense', [], 'monthly-misc:toiletries-personal-care'),
+      makeCategory('personal-lifestyle', 'Miscellaneous/Shopping', 'expense', [], 'monthly-misc:miscellaneous-shopping'),
+      makeCategory('personal-lifestyle', 'Gifts/Donations', 'expense', [], 'monthly-misc:gifts-donations'),
+      makeCategory('personal-lifestyle', 'Healthcare', 'expense', ['Heathcare'], 'monthly-misc:healthcare'),
+    ],
+  },
+  {
+    id: 'travel',
+    name: 'Travel',
+    type: 'expense',
+    sheetHeading: 'TRAVEL',
+    sheetHeadingAliases: ['MONTHLY MISC'],
+    categories: [
+      makeCategory('travel', 'Travel', 'expense', [], 'monthly-misc:travel'),
+    ],
+  },
+  {
+    id: 'pets',
+    name: 'Pets',
+    type: 'expense',
+    sheetHeading: 'PETS',
+    sheetHeadingAliases: ['MONTHLY MISC'],
+    categories: [
       makeCategory(
-        'monthly-misc',
+        'pets',
         'Motz Tax (Vet, Grooming, Food, etc.)',
         'expense',
         ['Motz Tax (Vet, Grooming, etc.)'],
+        'monthly-misc:motz-tax-vet-grooming-food-etc',
       ),
     ],
   },
@@ -89,10 +120,12 @@ export const categoryGroups = [
   },
   {
     id: 'debt',
-    name: 'Monthly Debt Payments',
+    name: 'Debt Payments',
     type: 'debt',
     sheetHeading: 'MONTHLY DEBT PAYMENTS',
-    categories: [makeCategory('debt', 'Debt', 'debt')],
+    categories: [
+      makeCategory('debt', 'Other Debt Payment', 'debt', ['Debt'], 'debt:debt'),
+    ],
   },
   {
     id: 'savings',
@@ -144,9 +177,9 @@ export function buildCategoryGroups(
       ...group.categories.map((category) => ({
         ...category,
         name: categoryNameOverrides[category.id] ?? category.name,
-          aliases: categoryNameOverrides[category.id]
-            ? [...(category.aliases ?? []), category.name]
-            : category.aliases,
+        aliases: categoryNameOverrides[category.id]
+          ? [...(category.aliases ?? []), category.name]
+          : category.aliases,
       })),
       ...customCategories
         .filter((category) => category.groupId === group.id)

@@ -1,8 +1,8 @@
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
-import { getCurrentMonthKey } from './domain/budget'
+import { getCurrentMonthKey, getPreviousMonthKey } from './domain/budget'
 import { createInitialBudgetData, saveBudgetData } from './services/localBudgetStore'
 
 beforeEach(() => {
@@ -11,29 +11,81 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup()
+  vi.restoreAllMocks()
 })
 
 describe('budget app phase 1', () => {
+  it('copies the previous month budget without copying activity or changing the template', async () => {
+    const user = userEvent.setup()
+    const month = getCurrentMonthKey()
+    const previousMonth = getPreviousMonthKey(month)
+    const data = createInitialBudgetData(month)
+    data.budgetTemplate = { 'home-bills:mortgage': 80000 }
+    data.budgetsByMonth[previousMonth] = { 'home-bills:mortgage': 120000 }
+    data.activities.push({
+      id: 'previous-month-entry',
+      date: `${previousMonth}-18`,
+      description: 'Previous month activity',
+      categoryId: 'home-bills:mortgage',
+      amountCents: 50000,
+    })
+    saveBudgetData(data)
+
+    render(<App />)
+    await user.click(screen.getAllByRole('button', { name: 'Budgets' })[0])
+    expect(screen.getByLabelText('Mortgage planned amount')).toHaveValue(800)
+
+    await user.click(screen.getByRole('button', { name: 'Copy previous month' }))
+
+    expect(screen.getByLabelText('Mortgage planned amount')).toHaveValue(1200)
+    expect(screen.getByText(/copied .* plan to/i)).toBeInTheDocument()
+    const saved = JSON.parse(window.localStorage.getItem('household-budget-phase1-v1'))
+    expect(saved.budgetsByMonth[month]['home-bills:mortgage']).toBe(120000)
+    expect(saved.budgetTemplate['home-bills:mortgage']).toBe(80000)
+    expect(saved.activities).toHaveLength(1)
+  })
+
+  it('asks before replacing a plan already saved for the selected month', async () => {
+    const user = userEvent.setup()
+    const month = getCurrentMonthKey()
+    const previousMonth = getPreviousMonthKey(month)
+    const data = createInitialBudgetData(month)
+    data.budgetTemplate = { 'home-bills:mortgage': 80000 }
+    data.budgetsByMonth[previousMonth] = { 'home-bills:mortgage': 120000 }
+    data.budgetsByMonth[month] = { 'home-bills:mortgage': 90000 }
+    saveBudgetData(data)
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
+
+    render(<App />)
+    await user.click(screen.getAllByRole('button', { name: 'Budgets' })[0])
+    await user.click(screen.getByRole('button', { name: 'Copy previous month' }))
+
+    expect(confirm).toHaveBeenCalledOnce()
+    expect(screen.getByLabelText('Mortgage planned amount')).toHaveValue(900)
+    const saved = JSON.parse(window.localStorage.getItem('household-budget-phase1-v1'))
+    expect(saved.budgetsByMonth[month]['home-bills:mortgage']).toBe(90000)
+  })
+
   it('adds and renames a category while preserving its budget and activity', async () => {
     const user = userEvent.setup()
     render(<App />)
     await user.click(screen.getAllByRole('button', { name: 'Budgets' })[0])
 
-    const monthlyMisc = screen.getByRole('heading', { name: 'Monthly Miscellaneous' })
+    const petsGroup = screen.getByRole('heading', { name: 'Pets' })
       .closest('.budget-group-panel')
-    await user.click(within(monthlyMisc).getByRole('button', { name: '+ Add category' }))
+    await user.click(within(petsGroup).getByRole('button', { name: '+ Add category' }))
     const categoryDialog = screen.getByRole('dialog', { name: 'Add budget category' })
-    await user.type(within(categoryDialog).getByLabelText('Category name'), 'Pet Care')
+    await user.type(within(categoryDialog).getByLabelText('Category name'), 'Bird Supplies')
     await user.click(within(categoryDialog).getByRole('button', { name: 'Add category' }))
 
-    const categoryBudget = screen.getByLabelText('Pet Care planned amount')
+    const categoryBudget = screen.getByLabelText('Bird Supplies planned amount')
     await user.clear(categoryBudget)
     await user.type(categoryBudget, '75')
     await user.click(screen.getByRole('button', { name: /save monthly plan/i }))
 
     await user.click(screen.getAllByRole('button', { name: /add activity/i })[0])
     const activityDialog = screen.getByRole('dialog', { name: /add activity/i })
-    await user.type(within(activityDialog).getByLabelText(/description/i), 'Vet visit')
+    await user.type(within(activityDialog).getByLabelText(/description/i), 'Pet store')
     await user.type(within(activityDialog).getByLabelText(/amount/i), '40')
     const saved = JSON.parse(window.localStorage.getItem('household-budget-phase1-v1'))
     const customCategory = saved.customCategories[0]
@@ -43,21 +95,21 @@ describe('budget app phase 1', () => {
     )
     await user.click(within(activityDialog).getByRole('button', { name: /add activity/i }))
     await user.click(screen.getAllByRole('button', { name: 'Activity' })[0])
-    expect(screen.getByText('Pet Care · Monthly Miscellaneous')).toBeInTheDocument()
+    expect(screen.getByText('Bird Supplies · Pets')).toBeInTheDocument()
 
     await user.click(screen.getAllByRole('button', { name: 'Budgets' })[0])
-    const updatedGroup = screen.getByRole('heading', { name: 'Monthly Miscellaneous' })
+    const updatedGroup = screen.getByRole('heading', { name: 'Pets' })
       .closest('.budget-group-panel')
-    await user.click(within(updatedGroup).getByRole('button', { name: 'Rename Pet Care' }))
+    await user.click(within(updatedGroup).getByRole('button', { name: 'Rename Bird Supplies' }))
     const editDialog = screen.getByRole('dialog', { name: 'Rename category' })
     const categoryName = within(editDialog).getByLabelText('Category name')
     await user.clear(categoryName)
-    await user.type(categoryName, 'Pet Care & Vet')
+    await user.type(categoryName, 'Bird Supplies & Pet Care')
     await user.click(within(editDialog).getByRole('button', { name: 'Save name' }))
 
-    expect(screen.getByLabelText('Pet Care & Vet planned amount')).toHaveValue(75)
+    expect(screen.getByLabelText('Bird Supplies & Pet Care planned amount')).toHaveValue(75)
     const updated = JSON.parse(window.localStorage.getItem('household-budget-phase1-v1'))
-    expect(updated.customCategories[0].name).toBe('Pet Care & Vet')
+    expect(updated.customCategories[0].name).toBe('Bird Supplies & Pet Care')
     expect(updated.budgetTemplate[customCategory.id]).toBe(7500)
     expect(updated.activities[0].categoryId).toBe(customCategory.id)
   })
@@ -87,15 +139,15 @@ describe('budget app phase 1', () => {
     render(<App />)
     await user.click(screen.getAllByRole('button', { name: 'Budgets' })[0])
 
-    const monthlyMisc = screen.getByRole('heading', { name: 'Monthly Miscellaneous' })
+    const foodGroup = screen.getByRole('heading', { name: 'Food & Dining' })
       .closest('.budget-group-panel')
-    await user.click(within(monthlyMisc).getByRole('button', { name: '+ Add category' }))
+    await user.click(within(foodGroup).getByRole('button', { name: '+ Add category' }))
     const dialog = screen.getByRole('dialog', { name: 'Add budget category' })
     await user.type(within(dialog).getByLabelText('Category name'), 'Costco')
     await user.click(within(dialog).getByRole('button', { name: 'Add category' }))
 
     expect(within(dialog).getByRole('alert'))
-      .toHaveTextContent(/already exists in monthly miscellaneous/i)
+      .toHaveTextContent(/already exists in food & dining/i)
     expect(window.localStorage.getItem('household-budget-phase1-v1')).toBeNull()
   })
 
