@@ -441,7 +441,17 @@ function AccessFrame({ children }) {
   return (
     <main className="auth-screen">
       <section className="auth-card">
-        <div className="auth-brand-mark" aria-hidden="true">⌂</div>
+        <div className="auth-brand-mark" aria-hidden="true">
+          <svg className="auth-brand-icon" viewBox="0 0 24 24" fill="none">
+            <path
+              d="M3 10.5 12 3l9 7.5M5.5 9v11h13V9M9 20v-6h6v6"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="1.8"
+            />
+          </svg>
+        </div>
         <p className="eyebrow">THE ANDERSONS</p>
         {children}
       </section>
