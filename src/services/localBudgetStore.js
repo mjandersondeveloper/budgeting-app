@@ -94,12 +94,18 @@ export function importBudgetBackup(serialized) {
     if (
       !activity ||
       typeof activity.id !== 'string' ||
+      !activity.id ||
+      activity.id.includes('/') ||
+      activity.id.length > 128 ||
       typeof activity.description !== 'string' ||
+      !activity.description.trim() ||
+      activity.description.length > 100 ||
       !validCategoryIds.has(activity.categoryId) ||
       !isValidMonthDay(activity.date) ||
       !Number.isSafeInteger(activity.amountCents) ||
       activity.amountCents <= 0 ||
-      (activity.note !== undefined && typeof activity.note !== 'string')
+      (activity.note !== undefined && typeof activity.note !== 'string') ||
+      (activity.note?.length ?? 0) > 300
     ) {
       throw new Error('The backup contains an invalid activity entry.')
     }

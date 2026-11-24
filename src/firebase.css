@@ -1,0 +1,267 @@
+.auth-screen {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 28px 18px;
+  background:
+    radial-gradient(ellipse at 12% 8%, rgb(91 139 103 / 12%), transparent 38%),
+    #111713;
+}
+
+.auth-card {
+  width: min(100%, 480px);
+  padding: 38px;
+  border: 1px solid #2b3930;
+  border-radius: 22px;
+  background: #171f1a;
+  box-shadow: 0 24px 70px rgb(0 0 0 / 24%);
+}
+
+.auth-brand-mark {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  margin-bottom: 22px;
+  place-items: center;
+  border-radius: 14px;
+  background: #23392a;
+  color: #9bd0a7;
+  font-size: 25px;
+}
+
+.auth-card > .eyebrow {
+  margin-bottom: 9px;
+  color: #9bd0a7;
+}
+
+.auth-card h1 {
+  margin: 0;
+  color: #e4ece6;
+  font-size: clamp(25px, 5vw, 32px);
+  letter-spacing: -0.8px;
+  line-height: 1.15;
+}
+
+.auth-description {
+  margin: 12px 0 22px;
+  color: #a0aea4;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.auth-description strong {
+  color: #dce5de;
+  overflow-wrap: anywhere;
+}
+
+.auth-form {
+  display: grid;
+  gap: 16px;
+}
+
+.auth-form label {
+  display: grid;
+  gap: 7px;
+  color: #b4c0b7;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.auth-form input {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid #34443a;
+  border-radius: 9px;
+  outline: none;
+  background: #141b16;
+  color: #dce5de;
+  font: inherit;
+  font-size: 14px;
+}
+
+.auth-form input:focus {
+  border-color: #77aa82;
+  box-shadow: 0 0 0 3px rgb(119 170 130 / 16%);
+}
+
+.auth-form input::placeholder {
+  color: #738178;
+}
+
+.auth-form .button {
+  width: 100%;
+}
+
+.auth-submit {
+  margin-top: 2px;
+}
+
+.auth-form .button:disabled,
+.auth-actions .button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.auth-error,
+.auth-message {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.auth-error {
+  color: #ef9b92;
+}
+
+.auth-message {
+  color: #a4d5ae;
+}
+
+.auth-text-button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #a4d5ae;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.auth-text-button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.auth-switch {
+  margin: 22px 0 0;
+  color: #a0aea4;
+  font-size: 13px;
+  text-align: center;
+}
+
+.auth-switch .auth-text-button {
+  margin-left: 3px;
+}
+
+.auth-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.auth-actions-stack {
+  display: grid;
+}
+
+.auth-actions-stack .button,
+.auth-actions-stack > .auth-text-button {
+  width: 100%;
+  min-height: 42px;
+}
+
+.auth-actions-stack > .auth-text-button {
+  margin-top: 5px;
+}
+
+.auth-signout {
+  display: block;
+  margin: 22px auto 0;
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 24px 0;
+  color: #87958b;
+  font-size: 11px;
+  text-align: center;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  height: 1px;
+  flex: 1;
+  background: #2b3930;
+  content: '';
+}
+
+.firebase-config-list {
+  display: grid;
+  gap: 8px;
+  margin: 20px 0;
+  padding-left: 22px;
+  color: #a0aea4;
+  font-size: 12px;
+}
+
+.firebase-config-list code,
+.auth-description code,
+.auth-help code {
+  color: #b7d9be;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  overflow-wrap: anywhere;
+}
+
+.auth-help {
+  margin: 18px 0 0;
+  color: #87958b;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.household-access-card {
+  grid-column: 1 / -1;
+  border-color: #31523a;
+}
+
+.household-access-card .button {
+  margin-top: 3px;
+}
+
+.invite-code-panel {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+  margin-top: 15px;
+  padding: 14px;
+  border: 1px solid #31523a;
+  border-radius: 12px;
+  background: #1b2b20;
+}
+
+.invite-code-panel p {
+  margin: 0;
+  color: #a0aea4;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.invite-code-panel code {
+  color: #c4e3ca;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 19px;
+  font-weight: 750;
+  letter-spacing: 1.7px;
+  overflow-wrap: anywhere;
+}
+
+.invite-code-panel small {
+  color: #87958b;
+  font-size: 10px;
+}
+
+.sign-out-button {
+  margin-top: 18px !important;
+}
+
+@media (max-width: 520px) {
+  .auth-card {
+    padding: 28px 22px;
+  }
+}

@@ -107,6 +107,11 @@ body,
   box-shadow: 0 0 0 3px #332c1e;
 }
 
+.local-indicator.cloud-indicator {
+  background: #76c98c;
+  box-shadow: 0 0 0 3px #23392a;
+}
+
 .month-picker input,
 .search-field,
 .currency-input,

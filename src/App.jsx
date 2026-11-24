@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { buildCategoryGroups } from './data/categories'
 import {
   formatMoney,
@@ -18,6 +18,7 @@ import {
   loadBudgetData,
   saveBudgetData,
 } from './services/localBudgetStore'
+import { loadHouseholdBudgetData, saveHouseholdBudgetData } from './services/firebaseBudgetStore'
 import './App.css'
 import './dark-theme.css'
 
@@ -45,8 +46,22 @@ function downloadFile(filename, contents, type) {
   URL.revokeObjectURL(url)
 }
 
-function App() {
+export function App({
+  initialData = null,
+  shared = false,
+  householdId = '',
+  householdName = 'Household',
+  userEmail = '',
+  canCreateInvite = false,
+  invite = null,
+  inviteError = '',
+  isCreatingInvite = false,
+  onCreateInvite = () => {},
+  onClearInvite = () => {},
+  onSignOut = () => {},
+}) {
   const [initialBudgetState] = useState(() => {
+    if (shared) return { data: initialData, error: '' }
     const month = getCurrentMonthKey()
     try {
       return { data: loadBudgetData(month), error: '' }
@@ -58,6 +73,10 @@ function App() {
     }
   })
   const [data, setData] = useState(initialBudgetState.data)
+  const dataRef = useRef(initialBudgetState.data)
+  const pendingSavesRef = useRef(0)
+  const saveQueueRef = useRef(Promise.resolve())
+  const [isSaving, setIsSaving] = useState(false)
   const [activePage, setActivePage] = useState('overview')
   const [editingActivity, setEditingActivity] = useState(null)
   const [showActivityForm, setShowActivityForm] = useState(false)
@@ -66,6 +85,16 @@ function App() {
   const [budgetFormRevision, setBudgetFormRevision] = useState(0)
   const [error, setError] = useState(initialBudgetState.error)
   const [notice, setNotice] = useState('')
+
+  useEffect(() => {
+    if (!shared || !initialData) return
+    const nextData = {
+      ...initialData,
+      month: dataRef.current?.month ?? initialData.month,
+    }
+    dataRef.current = nextData
+    setData(nextData)
+  }, [initialData, shared])
 
   const month = data?.month ?? getCurrentMonthKey()
   const budgets =
@@ -98,8 +127,48 @@ function App() {
   )
 
   function persist(nextData) {
+    if (shared) {
+      const previousData = dataRef.current
+      dataRef.current = nextData
+      setData(nextData)
+      setError('')
+      setNotice('')
+      pendingSavesRef.current += 1
+      setIsSaving(true)
+
+      const saveOperation = saveQueueRef.current.then(() =>
+        saveHouseholdBudgetData(householdId, previousData, nextData),
+      )
+      saveQueueRef.current = saveOperation.catch(() => undefined)
+      saveOperation.then(
+        () => {
+          pendingSavesRef.current -= 1
+          if (pendingSavesRef.current === 0) setIsSaving(false)
+        },
+        async (saveError) => {
+          pendingSavesRef.current -= 1
+          if (pendingSavesRef.current === 0) setIsSaving(false)
+          setNotice('')
+          try {
+            const refreshed = await loadHouseholdBudgetData(householdId)
+            const currentMonth = dataRef.current?.month ?? refreshed.month
+            const latestData = { ...refreshed, month: currentMonth }
+            dataRef.current = latestData
+            setData(latestData)
+            setError(`Changes could not be saved to the shared budget: ${saveError.message}`)
+          } catch (refreshError) {
+            setError(
+              `Changes could not be saved: ${saveError.message}. The latest shared data could not be reloaded: ${refreshError.message}`,
+            )
+          }
+        },
+      )
+      return true
+    }
+
     try {
       saveBudgetData(nextData)
+      dataRef.current = nextData
       setData(nextData)
       setError('')
       return true
@@ -326,11 +395,14 @@ function App() {
 
     try {
       const restored = importBudgetBackup(await file.text())
-      if (!window.confirm('Replace this browser’s budget and activity with the selected backup?')) {
+      const prompt = shared
+        ? 'Replace the shared household budget and activity with the selected backup? This affects both members.'
+        : 'Replace this browser’s budget and activity with the selected backup?'
+      if (!window.confirm(prompt)) {
         return
       }
       if (persist(restored)) {
-        setNotice('Budget backup restored in this browser.')
+        setNotice(shared ? 'Shared budget backup restored.' : 'Budget backup restored in this browser.')
       }
     } catch (restoreError) {
       setError(restoreError.message)
@@ -384,13 +456,22 @@ function App() {
   }
 
   function resetLocalData() {
-    if (!window.confirm('Delete all budget and activity data saved in this browser?')) {
+    const prompt = shared
+      ? 'Clear older budget data saved in this browser? This will not change the shared household budget.'
+      : 'Delete all budget and activity data saved in this browser?'
+    if (!window.confirm(prompt)) {
       return
     }
     try {
       window.localStorage.removeItem(getStorageKey())
-      setData(createInitialBudgetData(getCurrentMonthKey()))
-      setNotice('Local budget data cleared.')
+      if (!shared) {
+        const emptyData = createInitialBudgetData(getCurrentMonthKey())
+        dataRef.current = emptyData
+        setData(emptyData)
+      }
+      setNotice(shared
+        ? 'Older local data cleared. The shared budget was not changed.'
+        : 'Local budget data cleared.')
       setError('')
     } catch (resetError) {
       setError(`Local data could not be cleared: ${resetError.message}`)
@@ -444,20 +525,22 @@ function App() {
 
         <div className="sidebar-bottom">
           <div className="local-card">
-            <span className="local-indicator" />
+            <span className={`local-indicator${shared ? ' cloud-indicator' : ''}`} />
             <div>
-              <strong>On this device</strong>
-              <p>Syncing arrives in Phase 2</p>
+              <strong>{shared ? 'Shared household' : 'On this device'}</strong>
+              <p>{shared ? (isSaving ? 'Syncing changes…' : 'Live sync is on') : 'Syncing arrives in Phase 2'}</p>
             </div>
           </div>
-          <p className="sidebar-footnote">Saved only in this browser’s storage.</p>
+          <p className="sidebar-footnote">
+            {shared ? 'Changes are saved to the household cloud.' : 'Saved only in this browser’s storage.'}
+          </p>
         </div>
       </aside>
 
       <main className="main-pane">
         <header className="topbar">
           <div className="breadcrumbs">
-            <span>Household</span>
+            <span>{shared ? householdName : 'Household'}</span>
             <span aria-hidden="true">/</span>
             <strong>{navigation.find((item) => item.id === activePage)?.label}</strong>
           </div>
@@ -485,8 +568,12 @@ function App() {
 
         <div className="page-content">
           <div className="phase-banner" role="status">
-            <span className="phase-badge">PHASE 1</span>
-            <span>This browser only. Live sharing between devices is planned for Phase 2.</span>
+            <span className="phase-badge">{shared ? 'SHARED' : 'PHASE 1'}</span>
+            <span>
+              {shared
+                ? (isSaving ? 'Saving changes securely to the shared household…' : 'Your budget syncs live across household devices.')
+                : 'This browser only. Live sharing between devices is planned for Phase 2.'}
+            </span>
           </div>
 
           {(error || notice) && !categoryFormGroupId && (
@@ -542,6 +629,7 @@ function App() {
           {activePage === 'budgets' && (
             <BudgetsPage
               month={month}
+              shared={shared}
               groups={summary.byGroup}
               summary={summary}
               budgetFormRevision={budgetFormRevision}
@@ -556,6 +644,16 @@ function App() {
           {activePage === 'settings' && (
             <SettingsPage
               month={month}
+              shared={shared}
+              householdName={householdName}
+              userEmail={userEmail}
+              canCreateInvite={canCreateInvite}
+              invite={invite}
+              inviteError={inviteError}
+              isCreatingInvite={isCreatingInvite}
+              onCreateInvite={onCreateInvite}
+              onClearInvite={onClearInvite}
+              onSignOut={onSignOut}
               onImport={importBudgetFile}
               onRestoreBackup={restoreBackupFile}
               onExportActivities={exportActivityCsv}
@@ -917,6 +1015,7 @@ function ActivityPage({
 
 function BudgetsPage({
   month,
+  shared,
   groups,
   summary,
   budgetFormRevision,
@@ -1023,7 +1122,7 @@ function BudgetsPage({
           </section>
         ))}
         <div className="form-footer sticky-form-footer">
-          <span>Changes are saved only in this browser.</span>
+          <span>{shared ? 'Changes sync to the shared household.' : 'Changes are saved only in this browser.'}</span>
           <button className="button button-primary" type="submit">Save monthly plan</button>
         </div>
       </form>
@@ -1033,6 +1132,16 @@ function BudgetsPage({
 
 function SettingsPage({
   month,
+  shared,
+  householdName,
+  userEmail,
+  canCreateInvite,
+  invite,
+  inviteError,
+  isCreatingInvite,
+  onCreateInvite,
+  onClearInvite,
+  onSignOut,
   onImport,
   onRestoreBackup,
   onExportActivities,
@@ -1045,13 +1154,46 @@ function SettingsPage({
       <PageHeading
         eyebrow="PREFERENCES"
         title="Settings"
-        description="Import your current category budgets and keep a safe copy of this browser’s data."
+        description={shared
+          ? 'Manage household access, import budget plans, and keep a safe copy of your shared data.'
+          : 'Import your current category budgets and keep a safe copy of this browser’s data.'}
       />
       <div className="settings-grid">
+        {shared && (
+          <section className="panel settings-card household-access-card">
+            <p className="eyebrow">HOUSEHOLD ACCESS</p>
+            <h2>{householdName}</h2>
+            <p>Signed in as {userEmail}. Both household members can view and update the same live budget.</p>
+            {canCreateInvite ? (
+              <>
+                <button
+                  className="button button-primary"
+                  onClick={onCreateInvite}
+                  disabled={isCreatingInvite}
+                >
+                  {isCreatingInvite ? 'Creating code…' : 'Create one-time invite code'}
+                </button>
+                {invite && (
+                  <div className="invite-code-panel" role="status">
+                    <p>Share this code privately. It can be used once and expires in 24 hours.</p>
+                    <code>{invite.code}</code>
+                    <small>Expires {new Date(invite.expiresAt).toLocaleString()}</small>
+                    <button className="text-button" onClick={onClearInvite}>Hide code</button>
+                  </div>
+                )}
+              </>
+            ) : (
+              <p className="privacy-caption">Only the household owner can create an invitation.</p>
+            )}
+            {inviteError && <p className="auth-error" role="alert">{inviteError}</p>}
+            <button className="button button-secondary sign-out-button" onClick={onSignOut}>Sign out</button>
+          </section>
+        )}
+
         <section className="panel settings-card">
           <p className="eyebrow">BUDGET SETUP</p>
           <h2>Import from your sheet</h2>
-          <p>Export the active monthly worksheet as a CSV. We’ll read category names and planned amounts from the first two columns, on this device only.</p>
+          <p>Export the active monthly worksheet as a CSV. We’ll read category names and planned amounts from the first two columns in this browser.</p>
           <ul className="settings-list">
             <li>Choose the CSV exported from the current worksheet.</li>
             <li>Confirm that the month selector is set to the budget month you want to update ({getMonthLabel(month)}).</li>
@@ -1061,13 +1203,19 @@ function SettingsPage({
             Import budget CSV
             <input type="file" accept=".csv,text/csv" onChange={onImport} />
           </label>
-          <p className="privacy-caption">Your file is processed in this browser and is not uploaded.</p>
+          <p className="privacy-caption">
+            {shared
+              ? 'The CSV is processed in this browser; the imported budget changes sync to the household.'
+              : 'Your file is processed in this browser and is not uploaded.'}
+          </p>
         </section>
 
         <section className="panel settings-card">
           <p className="eyebrow">BACKUP & EXPORT</p>
           <h2>Take your data with you</h2>
-          <p>Phase 1 stores data in browser storage, which is not encrypted. Export a backup before clearing site data or switching browsers, and keep your device profile private.</p>
+          <p>{shared
+            ? 'The shared budget is stored in your Firebase project. Export a backup before replacing data or changing projects.'
+            : 'Phase 1 stores data in browser storage, which is not encrypted. Export a backup before clearing site data or switching browsers, and keep your device profile private.'}</p>
           <div className="settings-actions">
             <button className="button button-secondary" onClick={onExportBackup}>Download full backup</button>
             <button className="button button-secondary" onClick={onExportActivities}>Export activity CSV</button>
@@ -1080,10 +1228,14 @@ function SettingsPage({
         </section>
 
         <section className="panel settings-card settings-warning">
-          <p className="eyebrow">LOCAL DATA</p>
-          <h2>Clear this browser’s data</h2>
-          <p>This removes the budget, activity, and saved plan from this browser only. Export a backup first if you may need it later.</p>
-          <button className="button button-danger" onClick={onReset}>Clear local data</button>
+          <p className="eyebrow">{shared ? 'OLD LOCAL DATA' : 'LOCAL DATA'}</p>
+          <h2>{shared ? 'Clear older local data' : 'Clear this browser’s data'}</h2>
+          <p>{shared
+            ? 'This removes only the older Phase 1 budget saved in this browser. The shared household budget is not changed.'
+            : 'This removes the budget, activity, and saved plan from this browser only. Export a backup first if you may need it later.'}</p>
+          <button className="button button-danger" onClick={onReset}>
+            {shared ? 'Clear older local data' : 'Clear local data'}
+          </button>
         </section>
       </div>
     </>

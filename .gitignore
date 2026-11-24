@@ -11,6 +11,11 @@ node_modules
 dist
 dist-ssr
 *.local
+.firebase/
+.firebaserc
+.env
+.env.*
+!.env.example
 .env
 .env.*
 !.env.example

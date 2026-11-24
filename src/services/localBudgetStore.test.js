@@ -134,6 +134,17 @@ describe('local budget storage', () => {
       date: '2026-11-18',
     })
     expect(() => importBudgetBackup(JSON.stringify(invalid))).toThrow(/invalid activity/)
+
+    const invalidDocumentId = createInitialBudgetData('2026-11')
+    invalidDocumentId.activities.push({
+      id: 'invalid/activity',
+      description: 'Groceries',
+      amountCents: 100,
+      categoryId: 'food:groceries',
+      date: '2026-11-18',
+    })
+    expect(() => importBudgetBackup(JSON.stringify(invalidDocumentId)))
+      .toThrow(/invalid activity/)
   })
 
   it('reports browser storage write failures instead of hiding them', () => {
