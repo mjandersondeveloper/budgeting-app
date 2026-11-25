@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, within } from '@testing-library/rea
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
+import { buildCategoryGroups } from './data/categories'
 import { getCurrentMonthKey, getMonthLabel, getPreviousMonthKey } from './domain/budget'
 import { createInitialBudgetData, saveBudgetData } from './services/localBudgetStore'
 
@@ -15,6 +16,33 @@ afterEach(() => {
 })
 
 describe('budget app phase 1', () => {
+  it('shows one add activity action on the empty Activity page', async () => {
+    const user = userEvent.setup()
+
+    render(<App />)
+    expect(screen.getByRole('button', { name: 'Add activity' })).toBeInTheDocument()
+    await user.click(screen.getAllByRole('button', { name: 'Activity' })[0])
+
+    expect(screen.getAllByRole('button', { name: /add.*activity/i })).toHaveLength(1)
+    expect(screen.getByRole('button', { name: 'Add activity' })).toBeInTheDocument()
+  })
+
+  it('groups all backup and export actions together in Settings', async () => {
+    const user = userEvent.setup()
+
+    render(<App />)
+    await user.click(screen.getAllByRole('button', { name: 'Settings' })[0])
+
+    const backupSection = screen.getByRole('heading', { name: 'Take your data with you' })
+      .closest('section')
+    const actions = backupSection.querySelector('.settings-actions')
+
+    expect(within(actions).getByRole('button', { name: 'Download full backup' })).toBeInTheDocument()
+    expect(within(actions).getByRole('button', { name: 'Export activity CSV' })).toBeInTheDocument()
+    expect(within(actions).getByRole('button', { name: 'Export budget CSV' })).toBeInTheDocument()
+    expect(within(actions).getByLabelText('Restore full backup')).toBeInTheDocument()
+  })
+
   it('copies the previous month budget without copying activity or changing the template', async () => {
     const user = userEvent.setup()
     const month = getCurrentMonthKey()
@@ -181,12 +209,91 @@ describe('budget app phase 1', () => {
     expect(screen.getByText('The Andersons')).toBeInTheDocument()
     expect(screen.getByText('Spent + debt').closest('.stat-card')).toHaveClass('stat-over-budget')
     expect(screen.getByText('Monthly income').closest('.stat-card')).not.toHaveClass('stat-over-budget')
+    expect(screen.getByText('Food & Dining').closest('.group-summary')).toHaveClass('over-budget')
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Budgets' })[0])
     expect(screen.getByLabelText('Kroger/Giant Eagle planned amount').closest('.budget-category-row'))
       .toHaveClass('over-budget-row')
     expect(screen.getByLabelText('Marcus After-Tax Income planned amount').closest('.budget-category-row'))
       .not.toHaveClass('over-budget-row')
+  })
+
+  it('highlights unpaid required payments and summarizes budget issues', () => {
+    const month = getCurrentMonthKey()
+    const groceryCategory = 'monthly-misc:kroger-giant-eagle'
+    const unpaidCategory = 'home-bills:mortgage'
+    const requiredCategories = buildCategoryGroups()
+      .flatMap((group) => group.categories)
+      .filter((category) => category.requiresMonthlyPayment)
+    const data = createInitialBudgetData(month)
+    data.budgetTemplate = {
+      ...Object.fromEntries(requiredCategories.map((category) => [category.id, 100])),
+      [groceryCategory]: 1000,
+    }
+    data.budgetsByMonth[month] = data.budgetTemplate
+    data.activities = requiredCategories
+      .filter((category) => category.id !== unpaidCategory)
+      .map((category, index) => ({
+        id: `payment-${index}`,
+        date: `${month}-01`,
+        description: `${category.name} payment`,
+        categoryId: category.id,
+        amountCents: 100,
+      }))
+    data.activities.push({
+      id: 'grocery',
+      date: `${month}-02`,
+      description: 'Grocery run',
+      categoryId: groceryCategory,
+      amountCents: 1500,
+    })
+    saveBudgetData(data)
+
+    render(<App />)
+
+    const review = screen.getByRole('status', { name: 'Budget review' })
+    expect(review).toHaveTextContent('1 category over plan')
+    expect(review).toHaveTextContent('1 required payment not recorded')
+    expect(screen.getByText('Food & Dining').closest('.group-summary')).toHaveClass('over-budget')
+    expect(screen.getByText('Home / Bills').closest('.group-summary'))
+      .toHaveClass('required-payment-unpaid')
+    expect(screen.getByText('Mortgage').closest('.group-detail-row'))
+      .toHaveClass('unpaid-required-row')
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Budgets' })[0])
+
+    const mortgageRow = screen.getByLabelText('Mortgage planned amount')
+      .closest('.budget-category-row')
+    expect(mortgageRow).toHaveClass('unpaid-required-row')
+    expect(mortgageRow).toHaveTextContent('Not recorded')
+    expect(screen.getByRole('heading', { name: 'Home / Bills' })
+      .closest('.budget-group-heading')).toHaveClass('required-payment-unpaid')
+    expect(screen.getByLabelText('Kroger/Giant Eagle planned amount')
+      .closest('.budget-category-row')).toHaveClass('over-budget-row')
+  })
+
+  it('hides the budget review summary when payments are recorded and plans are within limits', () => {
+    const month = getCurrentMonthKey()
+    const requiredCategories = buildCategoryGroups()
+      .flatMap((group) => group.categories)
+      .filter((category) => category.requiresMonthlyPayment)
+    const data = createInitialBudgetData(month)
+    data.budgetTemplate = Object.fromEntries(
+      requiredCategories.map((category) => [category.id, 100]),
+    )
+    data.budgetsByMonth[month] = data.budgetTemplate
+    data.activities = requiredCategories.map((category, index) => ({
+      id: `payment-${index}`,
+      date: `${month}-01`,
+      description: `${category.name} payment`,
+      categoryId: category.id,
+      amountCents: 100,
+    }))
+    saveBudgetData(data)
+
+    render(<App />)
+
+    expect(screen.queryByRole('status', { name: 'Budget review' })).not.toBeInTheDocument()
   })
 
   it('clearly explains device-local storage and adds activity to the month', async () => {

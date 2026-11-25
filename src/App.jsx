@@ -548,16 +548,19 @@ export function App({
                 onChange={(event) => changeMonth(event.target.value)}
               />
             </label>
-            <button
-              className="button button-primary top-add"
-              onClick={() => {
-                setEditingActivity(null)
-                setShowActivityForm(true)
-                setError('')
-              }}
-            >
-              <span aria-hidden="true">＋</span> Add activity
-            </button>
+            {activePage !== 'activity' && (
+              <button
+                className="button button-primary top-add"
+                onClick={() => {
+                  setEditingActivity(null)
+                  setShowActivityForm(true)
+                  setError('')
+                }}
+              >
+                <span className="add-activity-icon" aria-hidden="true" />
+                <span>Add activity</span>
+              </button>
+            )}
           </div>
         </header>
 
@@ -738,6 +741,31 @@ function StatCard({ label, value, note, tone = 'default', icon, overBudget = fal
   )
 }
 
+function BudgetReviewSummary({ groups }) {
+  const categories = groups.flatMap((group) => group.categories)
+  const overBudgetCount = categories.filter((category) => category.isOverBudget).length
+  const unpaidRequiredCount = categories.filter(
+    (category) => category.isUnpaidRequiredPayment,
+  ).length
+
+  if (overBudgetCount === 0 && unpaidRequiredCount === 0) return null
+
+  return (
+    <aside className="budget-review-summary" aria-label="Budget review" role="status">
+      {overBudgetCount > 0 && (
+        <span className="budget-review-item budget-review-over">
+          {overBudgetCount} {overBudgetCount === 1 ? 'category' : 'categories'} over plan
+        </span>
+      )}
+      {unpaidRequiredCount > 0 && (
+        <span className="budget-review-item budget-review-unpaid">
+          {unpaidRequiredCount} required payment{unpaidRequiredCount === 1 ? '' : 's'} not recorded
+        </span>
+      )}
+    </aside>
+  )
+}
+
 function OverviewPage({
   month,
   summary,
@@ -764,6 +792,8 @@ function OverviewPage({
           </button>
         }
       />
+
+      <BudgetReviewSummary groups={groups} />
 
       {!hasBudgets && (
         <div className="setup-callout">
@@ -832,23 +862,38 @@ function OverviewPage({
                 ? Math.min(100, Math.round(group.actualCents / group.plannedCents * 100))
                 : 0
               return (
-                <details className={`group-summary${group.isOverBudget ? ' over-budget' : ''}`} key={group.id}>
+                <details
+                  className={`group-summary${group.isOverBudget ? ' over-budget' : ''}${group.hasUnpaidRequiredPayment ? ' required-payment-unpaid' : ''}`}
+                  key={group.id}
+                >
                   <summary>
                     <span className={`group-dot dot-${group.type}`} />
                     <span className="group-summary-name">{group.name}</span>
                     <span className="group-summary-amount">
                       {formatMoney(group.actualCents)}{' '}
-                      <small>of {formatMoney(group.plannedCents)}{group.isOverBudget ? ' · Over plan' : ''}</small>
+                      <small>
+                        of {formatMoney(group.plannedCents)}
+                        {group.isOverBudget ? ' · Over plan' : ''}
+                        {group.hasUnpaidRequiredPayment && (
+                          <span className="required-payment-inline"> · Due</span>
+                        )}
+                      </small>
                     </span>
                     <span className="group-progress-mini" aria-hidden="true"><span style={{ width: `${progress}%` }} /></span>
-                    <span className="group-chevron" aria-hidden="true">⌄</span>
+                    <span className="group-chevron" aria-hidden="true" />
                   </summary>
                   <div className="group-detail-list">
                     {group.categories.map((category) => (
-                      <div className={`group-detail-row${category.isOverBudget ? ' over-budget' : ''}`} key={category.id}>
+                      <div
+                        className={`group-detail-row${category.isOverBudget ? ' over-budget' : ''}${category.isUnpaidRequiredPayment ? ' unpaid-required-row' : ''}`}
+                        key={category.id}
+                      >
                         <span>{category.name}</span>
                         <span className={category.isOverBudget ? 'over-budget-amount' : ''}>
                           {formatMoney(category.actualCents)} <small>/ {formatMoney(category.plannedCents)}</small>
+                          {category.isUnpaidRequiredPayment && (
+                            <small className="required-payment-status">Not recorded</small>
+                          )}
                         </span>
                       </div>
                     ))}
@@ -898,7 +943,7 @@ function OverviewPage({
 function EmptyState({ title, description, action }) {
   return (
     <div className="empty-state">
-      <span className="empty-mark" aria-hidden="true">＋</span>
+      <span className="empty-mark" aria-hidden="true">+</span>
       <strong>{title}</strong>
       <p>{description}</p>
       {action}
@@ -976,7 +1021,12 @@ function ActivityPage({
         eyebrow={getMonthLabel(month).toUpperCase()}
         title="Activity"
         description="Income, expenses, savings, and fun-money activity for this month."
-        action={<button className="button button-primary" onClick={onAdd}>＋ Add activity</button>}
+        action={
+          <button className="button button-primary button-add-activity" onClick={onAdd}>
+            <span className="add-activity-icon" aria-hidden="true" />
+            <span>Add activity</span>
+          </button>
+        }
       />
       <section className="panel activity-panel">
         <div className="panel-toolbar">
@@ -1002,7 +1052,6 @@ function ActivityPage({
           <EmptyState
             title={query ? 'No matching activity' : 'No activity this month'}
             description={query ? 'Try another description or category.' : 'When you add an activity, it will appear here.'}
-            action={!query && <button className="button button-secondary" onClick={onAdd}>Add your first activity</button>}
           />
         )}
       </section>
@@ -1050,10 +1099,15 @@ function BudgetsPage({
       <form className="budget-groups" key={`${month}-${budgetFormRevision}`} onSubmit={onSave}>
         {groups.map((group) => (
           <section className="panel budget-group-panel" key={group.id}>
-            <div className={`budget-group-heading${group.isOverBudget ? ' over-budget' : ''}`}>
+            <div
+              className={`budget-group-heading${group.isOverBudget ? ' over-budget' : ''}${group.hasUnpaidRequiredPayment ? ' required-payment-unpaid' : ''}`}
+            >
               <div>
                 <span className={`group-dot dot-${group.type}`} />
                 <h2>{group.name}</h2>
+                {group.hasUnpaidRequiredPayment && (
+                  <span className="required-payment-badge">Payment due</span>
+                )}
               </div>
               <div className="budget-group-controls">
                 {group.type !== 'allocation' && (
@@ -1080,11 +1134,19 @@ function BudgetsPage({
             </div>
             <div className="budget-category-grid">
               {group.categories.map((category) => (
-                <div className={`budget-category-row${category.isOverBudget ? ' over-budget-row' : ''}`} key={category.id}>
+                <div
+                  className={`budget-category-row${category.isOverBudget ? ' over-budget-row' : ''}${category.isUnpaidRequiredPayment ? ' unpaid-required-row' : ''}`}
+                  key={category.id}
+                >
                   <div className="budget-category-label">
                     <strong>{category.name}</strong>
-                    <small className={category.isOverBudget ? 'over-budget-amount' : ''}>
-                      {formatMoney(category.actualCents)} actual{category.isOverBudget ? ' · Over plan' : ''}
+                    <small className={[
+                      category.isOverBudget ? 'over-budget-amount' : '',
+                      category.isUnpaidRequiredPayment ? 'required-payment-status' : '',
+                    ].filter(Boolean).join(' ')}>
+                      {formatMoney(category.actualCents)} actual
+                      {category.isOverBudget ? ' · Over plan' : ''}
+                      {category.isUnpaidRequiredPayment ? ' · Not recorded' : ''}
                     </small>
                   </div>
                   {category.type === 'allocation' ? (
@@ -1219,11 +1281,11 @@ function SettingsPage({
             <button className="button button-secondary" onClick={onExportBackup}>Download full backup</button>
             <button className="button button-secondary" onClick={onExportActivities}>Export activity CSV</button>
             <button className="button button-secondary" onClick={onExportBudgets}>Export budget CSV</button>
+            <label className="button button-secondary file-button backup-import">
+              Restore full backup
+              <input type="file" accept=".json,application/json" onChange={onRestoreBackup} />
+            </label>
           </div>
-          <label className="button button-secondary file-button backup-import">
-            Restore full backup
-            <input type="file" accept=".json,application/json" onChange={onRestoreBackup} />
-          </label>
         </section>
 
         <section className="panel settings-card settings-warning">

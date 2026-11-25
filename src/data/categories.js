@@ -12,11 +12,17 @@ const makeCategory = (
   aliases,
 })
 
+const makeRequiredCategory = (groupId, name) => ({
+  ...makeCategory(groupId, name, 'expense'),
+  requiresMonthlyPayment: true,
+})
+
 export const categoryGroups = [
   {
     id: 'home-bills',
     name: 'Home / Bills',
     type: 'expense',
+    requiresMonthlyPayment: true,
     sheetHeading: 'HOME/BILLS',
     categories: [
       makeCategory('home-bills', 'Mortgage', 'expense'),
@@ -37,8 +43,8 @@ export const categoryGroups = [
       makeCategory('car', 'Gas', 'expense'),
       makeCategory('car', 'Maintenance', 'expense'),
       makeCategory('car', 'Parking', 'expense'),
-      makeCategory('car', 'Car Insurance', 'expense'),
-      makeCategory('car', 'Car Payment', 'expense'),
+      makeRequiredCategory('car', 'Car Insurance'),
+      makeRequiredCategory('car', 'Car Payment'),
     ],
   },
   {
@@ -109,6 +115,7 @@ export const categoryGroups = [
     id: 'memberships',
     name: 'Monthly Memberships',
     type: 'expense',
+    requiresMonthlyPayment: true,
     sheetHeading: 'MONTHLY MEMBERSHIPS',
     categories: [
       makeCategory('memberships', 'Spotify', 'expense'),
@@ -176,6 +183,9 @@ export function buildCategoryGroups(
     categories: [
       ...group.categories.map((category) => ({
         ...category,
+        requiresMonthlyPayment: Boolean(
+          group.requiresMonthlyPayment || category.requiresMonthlyPayment,
+        ),
         name: categoryNameOverrides[category.id] ?? category.name,
         aliases: categoryNameOverrides[category.id]
           ? [...(category.aliases ?? []), category.name]
@@ -183,7 +193,13 @@ export function buildCategoryGroups(
       })),
       ...customCategories
         .filter((category) => category.groupId === group.id)
-        .map((category) => ({ ...category, isCustom: true })),
+        .map((category) => ({
+          ...category,
+          requiresMonthlyPayment: Boolean(
+            group.requiresMonthlyPayment || category.requiresMonthlyPayment,
+          ),
+          isCustom: true,
+        })),
     ],
   }))
 }
