@@ -13,7 +13,6 @@ import { serializeCsv } from './services/csvExport'
 import {
   createInitialBudgetData,
   exportBudgetBackup,
-  getStorageKey,
   importBudgetBackup,
   loadBudgetData,
   saveBudgetData,
@@ -455,26 +454,22 @@ export function App({
     )
   }
 
-  function resetLocalData() {
-    const prompt = shared
-      ? 'Clear older budget data saved in this browser? This will not change the shared household budget.'
-      : 'Delete all budget and activity data saved in this browser?'
-    if (!window.confirm(prompt)) {
-      return
-    }
-    try {
-      window.localStorage.removeItem(getStorageKey())
-      if (!shared) {
-        const emptyData = createInitialBudgetData(getCurrentMonthKey())
-        dataRef.current = emptyData
-        setData(emptyData)
-      }
-      setNotice(shared
-        ? 'Older local data cleared. The shared budget was not changed.'
-        : 'Local budget data cleared.')
-      setError('')
-    } catch (resetError) {
-      setError(`Local data could not be cleared: ${resetError.message}`)
+  function clearSelectedMonthActivity() {
+    const activityCount = monthActivities.length
+    if (activityCount === 0) return
+
+    const monthLabel = getMonthLabel(month)
+    const entryLabel = activityCount === 1 ? 'entry' : 'entries'
+    const prompt = `Delete ${activityCount} activity ${entryLabel} for ${monthLabel}? This removes income, expenses, and savings for this month only. The monthly plan and other months' activity will remain. This cannot be undone.`
+    if (!window.confirm(prompt)) return
+
+    const nextActivities = activities.filter(
+      (activity) => activity.date?.slice(0, 7) !== month,
+    )
+    if (persist({ ...data, activities: nextActivities })) {
+      setNotice(
+        `Cleared ${activityCount} activity ${entryLabel} for ${monthLabel}. The monthly plan and other months were kept.`,
+      )
     }
   }
 
@@ -644,6 +639,8 @@ export function App({
           {activePage === 'settings' && (
             <SettingsPage
               month={month}
+              monthActivityCount={monthActivities.length}
+              isSaving={isSaving}
               shared={shared}
               householdName={householdName}
               userEmail={userEmail}
@@ -665,7 +662,7 @@ export function App({
                   'application/json',
                 )
               }
-              onReset={resetLocalData}
+              onClearMonthActivity={clearSelectedMonthActivity}
             />
           )}
         </div>
@@ -840,7 +837,7 @@ function OverviewPage({
                     <span className={`group-dot dot-${group.type}`} />
                     <span className="group-summary-name">{group.name}</span>
                     <span className="group-summary-amount">
-                      {formatMoney(group.actualCents)}
+                      {formatMoney(group.actualCents)}{' '}
                       <small>of {formatMoney(group.plannedCents)}{group.isOverBudget ? ' · Over plan' : ''}</small>
                     </span>
                     <span className="group-progress-mini" aria-hidden="true"><span style={{ width: `${progress}%` }} /></span>
@@ -1132,6 +1129,8 @@ function BudgetsPage({
 
 function SettingsPage({
   month,
+  monthActivityCount,
+  isSaving,
   shared,
   householdName,
   userEmail,
@@ -1147,7 +1146,7 @@ function SettingsPage({
   onExportActivities,
   onExportBudgets,
   onExportBackup,
-  onReset,
+  onClearMonthActivity,
 }) {
   return (
     <>
@@ -1228,13 +1227,21 @@ function SettingsPage({
         </section>
 
         <section className="panel settings-card settings-warning">
-          <p className="eyebrow">{shared ? 'OLD LOCAL DATA' : 'LOCAL DATA'}</p>
-          <h2>{shared ? 'Clear older local data' : 'Clear this browser’s data'}</h2>
-          <p>{shared
-            ? 'This removes only the older Phase 1 budget saved in this browser. The shared household budget is not changed.'
-            : 'This removes the budget, activity, and saved plan from this browser only. Export a backup first if you may need it later.'}</p>
-          <button className="button button-danger" onClick={onReset}>
-            {shared ? 'Clear older local data' : 'Clear local data'}
+          <p className="eyebrow">MONTHLY ACTIVITY</p>
+          <h2>Clear activity for {getMonthLabel(month)}</h2>
+          <p>{monthActivityCount
+            ? `This deletes ${monthActivityCount} income, expense, and savings ${monthActivityCount === 1 ? 'entry' : 'entries'} for this month only. The monthly plan and activity in other months stay unchanged. Download a backup first if you may need these entries later.`
+            : `There is no activity to clear for ${getMonthLabel(month)}. Your monthly plan is unchanged.`}</p>
+          <button
+            className="button button-danger"
+            onClick={onClearMonthActivity}
+            disabled={monthActivityCount === 0 || isSaving}
+          >
+            {isSaving
+              ? 'Saving changes…'
+              : monthActivityCount
+                ? `Clear ${monthActivityCount} ${monthActivityCount === 1 ? 'entry' : 'entries'}`
+                : 'No activity to clear'}
           </button>
         </section>
       </div>

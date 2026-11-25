@@ -26,6 +26,7 @@ Firestore for a shared household budget.
 - Responsive navigation and layouts for desktop, tablet, and phone.
 - Dark appearance by default, with above-plan spending highlighted in red
   (income is not treated as overspending).
+- Installable as a Progressive Web App on supported phones and computers.
 
 ## Development
 
@@ -41,6 +42,19 @@ npm run build
 ```
 
 The production build uses the GitHub Pages base path `/budgeting-app/`.
+
+## Install on your phone
+
+After deploying the app, open
+`https://mjandersondeveloper.github.io/budgeting-app/` on your phone:
+
+- **iPhone/iPad:** Open the link in Safari, tap **Share**, then **Add to Home
+  Screen**.
+- **Android:** Open the link in Chrome, then choose **Install app** from the
+  browser menu or installation prompt.
+
+The app shell is cached for launching the installed app. Viewing and changing
+the shared budget still requires an internet connection for Firebase sync.
 
 ## Firebase setup
 

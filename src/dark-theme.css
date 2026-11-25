@@ -161,6 +161,12 @@ body,
   color: #f0b0a9;
 }
 
+.button-danger:hover {
+  border-color: #80504a;
+  background: #4b302d;
+  color: #f8c5bd;
+}
+
 .text-button,
 .eyebrow {
   color: #91c69d;

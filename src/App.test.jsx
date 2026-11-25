@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen, within } from '@testing-library/rea
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
-import { getCurrentMonthKey, getPreviousMonthKey } from './domain/budget'
+import { getCurrentMonthKey, getMonthLabel, getPreviousMonthKey } from './domain/budget'
 import { createInitialBudgetData, saveBudgetData } from './services/localBudgetStore'
 
 beforeEach(() => {
@@ -207,6 +207,83 @@ describe('budget app phase 1', () => {
 
     expect(screen.getByText('Grocery run')).toBeInTheDocument()
     expect(screen.getAllByText('-$42.15')).not.toHaveLength(0)
+    expect(
+      JSON.parse(window.localStorage.getItem('household-budget-phase1-v1')).activities,
+    ).toHaveLength(1)
+  })
+
+  it('clears only selected-month activity and preserves plans and other months', async () => {
+    const user = userEvent.setup()
+    const currentMonth = getCurrentMonthKey()
+    const selectedMonth = getPreviousMonthKey(currentMonth)
+    const selectedMonthLabel = getMonthLabel(selectedMonth)
+    const data = createInitialBudgetData(currentMonth)
+    data.budgetTemplate = { 'home-bills:mortgage': 80000 }
+    data.budgetsByMonth[selectedMonth] = { 'home-bills:mortgage': 120000 }
+    data.activities = [
+      {
+        id: 'selected-month-paycheck',
+        date: `${selectedMonth}-03`,
+        description: 'Selected-month paycheck',
+        categoryId: 'income:marcus-after-tax-income',
+        amountCents: 150000,
+      },
+      {
+        id: 'selected-month-groceries',
+        date: `${selectedMonth}-06`,
+        description: 'Selected-month groceries',
+        categoryId: 'monthly-misc:kroger-giant-eagle',
+        amountCents: 8500,
+      },
+      {
+        id: 'other-month-entry',
+        date: `${currentMonth}-25`,
+        description: 'Other month entry',
+        categoryId: 'home-bills:mortgage',
+        amountCents: 120000,
+      },
+    ]
+    saveBudgetData(data)
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    render(<App />)
+    fireEvent.change(screen.getByLabelText('Budget month'), {
+      target: { value: selectedMonth },
+    })
+    await user.click(screen.getAllByRole('button', { name: 'Settings' })[0])
+
+    await user.click(screen.getByRole('button', { name: 'Clear 2 entries' }))
+
+    expect(confirm).toHaveBeenCalledOnce()
+    expect(confirm.mock.calls[0][0]).toContain(selectedMonthLabel)
+    expect(screen.getByText(/Cleared 2 activity entries/)).toBeInTheDocument()
+    const saved = JSON.parse(window.localStorage.getItem('household-budget-phase1-v1'))
+    expect(saved.activities.map((activity) => activity.id)).toEqual([
+      'other-month-entry',
+    ])
+    expect(saved.budgetTemplate['home-bills:mortgage']).toBe(80000)
+    expect(saved.budgetsByMonth[selectedMonth]['home-bills:mortgage']).toBe(120000)
+  })
+
+  it('leaves activity unchanged when clearing the selected month is cancelled', async () => {
+    const user = userEvent.setup()
+    const month = getCurrentMonthKey()
+    const data = createInitialBudgetData(month)
+    data.activities.push({
+      id: 'current-entry',
+      date: `${month}-03`,
+      description: 'Current entry',
+      categoryId: 'home-bills:mortgage',
+      amountCents: 120000,
+    })
+    saveBudgetData(data)
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
+
+    render(<App />)
+    await user.click(screen.getAllByRole('button', { name: 'Settings' })[0])
+    await user.click(screen.getByRole('button', { name: 'Clear 1 entry' }))
+
+    expect(confirm).toHaveBeenCalledOnce()
     expect(
       JSON.parse(window.localStorage.getItem('household-budget-phase1-v1')).activities,
     ).toHaveLength(1)
