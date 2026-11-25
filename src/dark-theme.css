@@ -435,8 +435,74 @@ body,
   color: #ffaaa1;
 }
 
-.budget-category-row.over-budget-row {
+.budget-category-row.over-budget-row::before {
   background: #2a1d1d;
+}
+
+.budget-review-over {
+  border-color: #71403e;
+  background: #2a1d1d;
+  color: #ffaaa1;
+}
+
+.budget-review-unpaid {
+  border-color: #6a572b;
+  background: #332b19;
+  color: #e5cb78;
+}
+
+.group-summary.required-payment-unpaid:not(.over-budget) summary {
+  background: #332b19;
+}
+
+.group-summary.required-payment-unpaid:not(.over-budget) .group-summary-name {
+  color: #e5cb78;
+}
+
+.required-payment-inline {
+  color: #e5cb78;
+}
+
+.group-summary.over-budget summary {
+  background: #2a1d1d;
+}
+
+.group-summary.over-budget .group-summary-name {
+  color: #ff8f87;
+}
+
+.group-detail-row.over-budget {
+  background: #2a1d1d;
+}
+
+.group-detail-row.unpaid-required-row {
+  background: #332b19;
+}
+
+.group-detail-row .required-payment-status,
+.budget-category-label .required-payment-status {
+  color: #e5cb78;
+}
+
+.budget-group-heading.required-payment-unpaid:not(.over-budget) {
+  background: #332b19;
+}
+
+.budget-group-heading.over-budget {
+  background: #2a1d1d;
+}
+
+.budget-group-heading.over-budget h2 {
+  color: #ff8f87;
+}
+
+.required-payment-badge {
+  background: #51431e;
+  color: #e5cb78;
+}
+
+.budget-category-row.unpaid-required-row::before {
+  background: #332b19;
 }
 
 .over-budget-row .currency-input {

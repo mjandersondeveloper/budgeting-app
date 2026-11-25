@@ -25,6 +25,12 @@ export function formatMoney(cents, options = {}) {
   }).format((cents ?? 0) / 100)
 }
 
+function exceedsPlan(type, actualCents, plannedCents) {
+  if (type === 'income') return false
+  const applicablePlan = type === 'allocation' ? Math.max(0, plannedCents) : plannedCents
+  return actualCents > applicablePlan
+}
+
 export function summarizeBudget({ groups, budgets, activities }) {
   const actuals = {}
 
@@ -43,25 +49,36 @@ export function summarizeBudget({ groups, budgets, activities }) {
       0,
     )
 
+    const categories = group.categories.map((category) => {
+      const categoryPlannedCents = budgets[category.id] ?? 0
+      const categoryActualCents = actuals[category.id] ?? 0
+      const requiresMonthlyPayment = Boolean(category.requiresMonthlyPayment)
+
+      return {
+        ...category,
+        plannedCents: categoryPlannedCents,
+        actualCents: categoryActualCents,
+        remainingCents: categoryPlannedCents - categoryActualCents,
+        isOverBudget: exceedsPlan(
+          category.type,
+          categoryActualCents,
+          categoryPlannedCents,
+        ),
+        isUnpaidRequiredPayment:
+          requiresMonthlyPayment && categoryActualCents <= 0,
+      }
+    })
+
     return {
       ...group,
       plannedCents,
       actualCents,
       remainingCents: plannedCents - actualCents,
-      isOverBudget: group.type !== 'income' && actualCents > plannedCents,
-      categories: group.categories.map((category) => {
-        const categoryPlannedCents = budgets[category.id] ?? 0
-        const categoryActualCents = actuals[category.id] ?? 0
-
-        return {
-          ...category,
-          plannedCents: categoryPlannedCents,
-          actualCents: categoryActualCents,
-          remainingCents: categoryPlannedCents - categoryActualCents,
-          isOverBudget:
-            category.type !== 'income' && categoryActualCents > categoryPlannedCents,
-        }
-      }),
+      isOverBudget: exceedsPlan(group.type, actualCents, plannedCents),
+      hasUnpaidRequiredPayment: categories.some(
+        (category) => category.isUnpaidRequiredPayment,
+      ),
+      categories,
     }
   })
 
@@ -97,14 +114,18 @@ export function summarizeBudget({ groups, budgets, activities }) {
         ...category,
         plannedCents,
         remainingCents: plannedCents - category.actualCents,
-        isOverBudget: category.actualCents > plannedCents,
+        isOverBudget: exceedsPlan('allocation', category.actualCents, plannedCents),
       }
     })
     group.plannedCents = group.categories.reduce(
       (total, category) => total + category.plannedCents,
       0,
     )
-    group.isOverBudget = group.actualCents > group.plannedCents
+    group.isOverBudget = exceedsPlan(
+      'allocation',
+      group.actualCents,
+      group.plannedCents,
+    )
   }
 
   return {

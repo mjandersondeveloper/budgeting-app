@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { buildCategoryGroups } from '../data/categories'
 import {
   getPreviousMonthKey,
   parseMoneyToCents,
@@ -88,6 +89,55 @@ describe('summarizeBudget', () => {
     expect(summary.byGroup[0].isOverBudget).toBe(true)
     expect(incomeCategory.isOverBudget).toBe(false)
     expect(incomeGroup.isOverBudget).toBe(false)
+  })
+
+  it('tracks required monthly payments as unpaid until a positive expense is recorded', () => {
+    const requiredGroups = buildCategoryGroups([
+      {
+        id: 'custom-bill',
+        groupId: 'home-bills',
+        name: 'Additional bill',
+        type: 'expense',
+      },
+    ])
+    const summary = summarizeBudget({
+      groups: requiredGroups,
+      budgets: {},
+      activities: [
+        { categoryId: 'car:car-insurance', amountCents: 100 },
+        { categoryId: 'home-bills:mortgage', amountCents: -100 },
+      ],
+    })
+    const homeBills = summary.byGroup.find((group) => group.id === 'home-bills')
+    const car = summary.byGroup.find((group) => group.id === 'car')
+    const memberships = summary.byGroup.find((group) => group.id === 'memberships')
+
+    expect(homeBills.hasUnpaidRequiredPayment).toBe(true)
+    expect(homeBills.categories.find((category) => category.id === 'home-bills:mortgage'))
+      .toMatchObject({ isUnpaidRequiredPayment: true })
+    expect(homeBills.categories.find((category) => category.id === 'custom-bill'))
+      .toMatchObject({ isUnpaidRequiredPayment: true })
+    expect(car.categories.find((category) => category.id === 'car:car-insurance'))
+      .toMatchObject({ isUnpaidRequiredPayment: false })
+    expect(car.categories.find((category) => category.id === 'car:car-payment'))
+      .toMatchObject({ isUnpaidRequiredPayment: true })
+    expect(car.categories.find((category) => category.id === 'car:gas'))
+      .toMatchObject({ isUnpaidRequiredPayment: false })
+    expect(memberships.categories.every((category) => category.isUnpaidRequiredPayment))
+      .toBe(true)
+  })
+
+  it('does not treat an unused negative fun-money allocation as overspending', () => {
+    const summary = summarizeBudget({
+      groups,
+      budgets: { groceries: 20000, pay: 10000 },
+      activities: [],
+    })
+    const funMoney = summary.byGroup.find((group) => group.id === 'fun')
+
+    expect(funMoney.plannedCents).toBe(-10000)
+    expect(funMoney.isOverBudget).toBe(false)
+    expect(funMoney.categories.every((category) => !category.isOverBudget)).toBe(true)
   })
 })
 

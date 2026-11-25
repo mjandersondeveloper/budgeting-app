@@ -1,8 +1,15 @@
 .auth-screen {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   min-height: 100vh;
-  place-items: center;
-  padding: 28px 18px;
+  min-height: 100svh;
+  align-items: center;
+  justify-content: center;
+  padding:
+    max(28px, env(safe-area-inset-top, 0px))
+    max(18px, env(safe-area-inset-right, 0px))
+    max(28px, env(safe-area-inset-bottom, 0px))
+    max(18px, env(safe-area-inset-left, 0px));
   background:
     radial-gradient(ellipse at 12% 8%, rgb(91 139 103 / 12%), transparent 38%),
     #111713;
@@ -10,6 +17,7 @@
 
 .auth-card {
   width: min(100%, 480px);
+  min-width: 0;
   padding: 38px;
   border: 1px solid #2b3930;
   border-radius: 22px;
@@ -83,7 +91,7 @@
   background: #141b16;
   color: #dce5de;
   font: inherit;
-  font-size: 14px;
+  font-size: 16px;
 }
 
 .auth-form input:focus {
@@ -143,6 +151,11 @@
 }
 
 .auth-switch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 3px 4px;
   margin: 22px 0 0;
   color: #a0aea4;
   font-size: 13px;
@@ -150,7 +163,7 @@
 }
 
 .auth-switch .auth-text-button {
-  margin-left: 3px;
+  margin-left: 0;
 }
 
 .auth-actions {
@@ -167,7 +180,7 @@
 .auth-actions-stack .button,
 .auth-actions-stack > .auth-text-button {
   width: 100%;
-  min-height: 42px;
+  min-height: var(--control-height);
 }
 
 .auth-actions-stack > .auth-text-button {
@@ -185,7 +198,7 @@
   gap: 12px;
   margin: 24px 0;
   color: #87958b;
-  font-size: 11px;
+  font-size: 13px;
   text-align: center;
 }
 
@@ -244,7 +257,7 @@
 .invite-code-panel p {
   margin: 0;
   color: #a0aea4;
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.5;
 }
 
@@ -259,7 +272,7 @@
 
 .invite-code-panel small {
   color: #87958b;
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .sign-out-button {
@@ -269,6 +282,6 @@
 
 @media (max-width: 520px) {
   .auth-card {
-    padding: 28px 22px;
+    padding: 24px 20px;
   }
 }
