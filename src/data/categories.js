@@ -12,9 +12,9 @@ const makeCategory = (
   aliases,
 })
 
-const makeRequiredCategory = (groupId, name) => ({
-  ...makeCategory(groupId, name, 'expense'),
-  requiresMonthlyPayment: true,
+const makeRequiredCategory = (groupId, name, type = 'expense') => ({
+  ...makeCategory(groupId, name, type),
+  requiresMonthlyEntry: true,
 })
 
 export const categoryGroups = [
@@ -22,7 +22,7 @@ export const categoryGroups = [
     id: 'home-bills',
     name: 'Home / Bills',
     type: 'expense',
-    requiresMonthlyPayment: true,
+    requiresMonthlyEntry: true,
     sheetHeading: 'HOME/BILLS',
     categories: [
       makeCategory('home-bills', 'Mortgage', 'expense'),
@@ -115,7 +115,7 @@ export const categoryGroups = [
     id: 'memberships',
     name: 'Monthly Memberships',
     type: 'expense',
-    requiresMonthlyPayment: true,
+    requiresMonthlyEntry: true,
     sheetHeading: 'MONTHLY MEMBERSHIPS',
     categories: [
       makeCategory('memberships', 'Spotify', 'expense'),
@@ -138,6 +138,7 @@ export const categoryGroups = [
     id: 'savings',
     name: 'Monthly Savings',
     type: 'savings',
+    requiresMonthlyEntry: true,
     sheetHeading: 'MONTHLY SAVINGS',
     categories: [
       makeCategory('savings', 'Joint Savings', 'savings'),
@@ -151,9 +152,10 @@ export const categoryGroups = [
     type: 'income',
     sheetHeading: 'MONTHLY INCOME',
     categories: [
-      makeCategory('income', 'Marcus After-Tax Income', 'income'),
-      makeCategory('income', 'Alexa After-Tax Income', 'income'),
+      makeRequiredCategory('income', 'Marcus After-Tax Income', 'income'),
+      makeRequiredCategory('income', 'Alexa After-Tax Income', 'income'),
       makeCategory('income', 'Extra Income', 'income'),
+      makeCategory('income', 'Credits', 'income'),
     ],
   },
   {
@@ -183,8 +185,8 @@ export function buildCategoryGroups(
     categories: [
       ...group.categories.map((category) => ({
         ...category,
-        requiresMonthlyPayment: Boolean(
-          group.requiresMonthlyPayment || category.requiresMonthlyPayment,
+        requiresMonthlyEntry: Boolean(
+          group.requiresMonthlyEntry || category.requiresMonthlyEntry,
         ),
         name: categoryNameOverrides[category.id] ?? category.name,
         aliases: categoryNameOverrides[category.id]
@@ -195,8 +197,8 @@ export function buildCategoryGroups(
         .filter((category) => category.groupId === group.id)
         .map((category) => ({
           ...category,
-          requiresMonthlyPayment: Boolean(
-            group.requiresMonthlyPayment || category.requiresMonthlyPayment,
+          requiresMonthlyEntry: Boolean(
+            group.requiresMonthlyEntry || category.requiresMonthlyEntry,
           ),
           isCustom: true,
         })),

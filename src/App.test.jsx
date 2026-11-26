@@ -16,6 +16,45 @@ afterEach(() => {
 })
 
 describe('budget app phase 1', () => {
+  it.each([
+    { actualExpenseCents: 40000, expectedAmount: '$100.00', expectedClass: 'cashflow-positive' },
+    { actualExpenseCents: 60000, expectedAmount: '-$100.00', expectedClass: 'cashflow-negative' },
+  ])('labels and colors surplus variance based on its sign', ({
+    actualExpenseCents,
+    expectedAmount,
+    expectedClass,
+  }) => {
+    const month = getCurrentMonthKey()
+    const data = createInitialBudgetData(month)
+    data.budgetTemplate = {
+      'income:marcus-after-tax-income': 100000,
+      'home-bills:mortgage': 50000,
+    }
+    data.budgetsByMonth[month] = data.budgetTemplate
+    data.activities = [
+      {
+        id: 'paycheck',
+        date: `${month}-01`,
+        description: 'Paycheck',
+        categoryId: 'income:marcus-after-tax-income',
+        amountCents: 100000,
+      },
+      {
+        id: 'mortgage',
+        date: `${month}-02`,
+        description: 'Mortgage payment',
+        categoryId: 'home-bills:mortgage',
+        amountCents: actualExpenseCents,
+      },
+    ]
+    saveBudgetData(data)
+
+    render(<App />)
+
+    expect(screen.getByText('Surplus vs. Plan')).toBeInTheDocument()
+    expect(screen.getByText(expectedAmount)).toHaveClass(expectedClass)
+  })
+
   it('shows one add activity action on the empty Activity page', async () => {
     const user = userEvent.setup()
 
@@ -209,22 +248,31 @@ describe('budget app phase 1', () => {
     expect(screen.getByText('The Andersons')).toBeInTheDocument()
     expect(screen.getByText('Spent + debt').closest('.stat-card')).toHaveClass('stat-over-budget')
     expect(screen.getByText('Monthly income').closest('.stat-card')).not.toHaveClass('stat-over-budget')
-    expect(screen.getByText('Food & Dining').closest('.group-summary')).toHaveClass('over-budget')
+    const foodSummary = screen.getByText('Food & Dining').closest('.group-summary')
+    expect(foodSummary).toHaveClass('over-budget')
+    expect(within(foodSummary).getByText(/Over plan/)).toHaveClass('over-budget-inline')
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Budgets' })[0])
-    expect(screen.getByLabelText('Kroger/Giant Eagle planned amount').closest('.budget-category-row'))
-      .toHaveClass('over-budget-row')
+    const groceryRow = screen.getByLabelText('Kroger/Giant Eagle planned amount')
+      .closest('.budget-category-row')
+    expect(groceryRow).toHaveClass('over-budget-row')
+    expect(within(groceryRow).getByText('$15.00 actual')).toHaveClass('budget-category-actual')
+    expect(within(groceryRow).getByText(/Over plan/)).toHaveClass('over-budget-inline')
+    const foodGroup = screen.getByRole('heading', { name: 'Food & Dining' })
+      .closest('.budget-group-panel')
+    expect(within(foodGroup).getByText('Over plan')).toHaveClass('over-budget-badge')
     expect(screen.getByLabelText('Marcus After-Tax Income planned amount').closest('.budget-category-row'))
       .not.toHaveClass('over-budget-row')
+    expect(screen.getByLabelText('Credits planned amount')).toBeInTheDocument()
   })
 
-  it('highlights unpaid required payments and summarizes budget issues', () => {
+  it('highlights missing required entries and summarizes budget issues', () => {
     const month = getCurrentMonthKey()
     const groceryCategory = 'monthly-misc:kroger-giant-eagle'
     const unpaidCategory = 'home-bills:mortgage'
     const requiredCategories = buildCategoryGroups()
       .flatMap((group) => group.categories)
-      .filter((category) => category.requiresMonthlyPayment)
+      .filter((category) => category.requiresMonthlyEntry && category.type !== 'allocation')
     const data = createInitialBudgetData(month)
     data.budgetTemplate = {
       ...Object.fromEntries(requiredCategories.map((category) => [category.id, 100])),
@@ -253,30 +301,147 @@ describe('budget app phase 1', () => {
 
     const review = screen.getByRole('status', { name: 'Budget review' })
     expect(review).toHaveTextContent('1 category over plan')
-    expect(review).toHaveTextContent('1 required payment not recorded')
+    expect(review).toHaveTextContent('1 entry not fully recorded')
     expect(screen.getByText('Food & Dining').closest('.group-summary')).toHaveClass('over-budget')
     expect(screen.getByText('Home / Bills').closest('.group-summary'))
-      .toHaveClass('required-payment-unpaid')
+      .toHaveClass('required-entry-missing')
     expect(screen.getByText('Mortgage').closest('.group-detail-row'))
-      .toHaveClass('unpaid-required-row')
+      .toHaveClass('missing-required-row')
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Budgets' })[0])
 
     const mortgageRow = screen.getByLabelText('Mortgage planned amount')
       .closest('.budget-category-row')
-    expect(mortgageRow).toHaveClass('unpaid-required-row')
+    expect(mortgageRow).toHaveClass('missing-required-row')
     expect(mortgageRow).toHaveTextContent('Not recorded')
     expect(screen.getByRole('heading', { name: 'Home / Bills' })
-      .closest('.budget-group-heading')).toHaveClass('required-payment-unpaid')
+      .closest('.budget-group-heading')).toHaveClass('required-entry-missing')
     expect(screen.getByLabelText('Kroger/Giant Eagle planned amount')
       .closest('.budget-category-row')).toHaveClass('over-budget-row')
   })
 
-  it('hides the budget review summary when payments are recorded and plans are within limits', () => {
+  it.each([
+    {
+      name: 'positive allocations without activity',
+      actualExpensesCents: 0,
+      marcusFunMoneyCents: 0,
+      expectedAmounts: ['$50.00', '$50.00'],
+      expectedStates: ['pending', 'pending'],
+      expectedLabels: ['Not recorded', 'Not recorded'],
+      expectedIncompleteCount: 2,
+    },
+    {
+      name: 'activity recorded for one person',
+      actualExpensesCents: 0,
+      marcusFunMoneyCents: 1000,
+      expectedAmounts: ['$50.00', '$50.00'],
+      expectedStates: ['partial', 'pending'],
+      expectedLabels: ['Partially recorded', 'Not recorded'],
+      expectedIncompleteCount: 2,
+    },
+    {
+      name: 'allocation fully recorded for one person',
+      actualExpensesCents: 0,
+      marcusFunMoneyCents: 5000,
+      expectedAmounts: ['$50.00', '$50.00'],
+      expectedStates: ['recorded', 'pending'],
+      expectedLabels: ['Recorded', 'Not recorded'],
+      expectedIncompleteCount: 1,
+    },
+    {
+      name: 'zero allocations',
+      actualExpensesCents: 10000,
+      marcusFunMoneyCents: 0,
+      expectedAmounts: ['$0.00', '$0.00'],
+      expectedStates: ['inactive', 'inactive'],
+      expectedLabels: ['No allocation', 'No allocation'],
+      expectedIncompleteCount: 0,
+    },
+    {
+      name: 'negative allocations',
+      actualExpensesCents: 12000,
+      marcusFunMoneyCents: 0,
+      expectedAmounts: ['-$10.00', '-$10.00'],
+      expectedStates: ['inactive', 'inactive'],
+      expectedLabels: ['No allocation', 'No allocation'],
+      expectedIncompleteCount: 0,
+    },
+  ])('shows fun-money amounts and activity status in the overview: $name', ({
+    actualExpensesCents,
+    marcusFunMoneyCents,
+    expectedAmounts,
+    expectedStates,
+    expectedLabels,
+    expectedIncompleteCount,
+  }) => {
+    const month = getCurrentMonthKey()
+    const data = createInitialBudgetData(month)
+    data.budgetTemplate = {
+      'home-bills:mortgage': actualExpensesCents,
+    }
+    data.activities = [
+      {
+        id: 'paycheck',
+        date: `${month}-01`,
+        description: 'Paycheck',
+        categoryId: 'income:marcus-after-tax-income',
+        amountCents: 10000,
+      },
+    ]
+    if (actualExpensesCents > 0) {
+      data.activities.push({
+        id: 'mortgage',
+        date: `${month}-02`,
+        description: 'Mortgage payment',
+        categoryId: 'home-bills:mortgage',
+        amountCents: actualExpensesCents,
+      })
+    }
+    if (marcusFunMoneyCents > 0) {
+      data.activities.push({
+        id: 'marcus-fun-money',
+        date: `${month}-03`,
+        description: 'Personal purchase',
+        categoryId: 'fun-money:marcus-fun-money',
+        amountCents: marcusFunMoneyCents,
+      })
+    }
+    saveBudgetData(data)
+
+    render(<App />)
+
+    expect(screen.getByText('Activity check-in')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Monthly cash flow' })).toBeInTheDocument()
+    for (const [index, person] of ['Marcus', 'Alexa'].entries()) {
+      const item = screen.getByText(person).closest('.fun-money-person-card')
+      expect(item).toHaveClass(`is-${expectedStates[index]}`)
+      expect(within(item).getByText(expectedAmounts[index]))
+        .toHaveClass('fun-money-allocation', `is-${expectedStates[index]}`)
+      expect(within(item).getByText(expectedLabels[index]))
+        .toHaveClass('fun-money-status-label')
+    }
+    const review = screen.queryByRole('status', { name: 'Budget review' })
+    if (expectedIncompleteCount > 0) {
+      expect(review).toHaveTextContent(
+        `${expectedIncompleteCount} ${expectedIncompleteCount === 1 ? 'entry' : 'entries'} not fully recorded`,
+      )
+    } else {
+      expect(review).not.toBeInTheDocument()
+    }
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Budgets' })[0])
+    const funMoneyPanel = screen.getByRole('heading', { name: 'Fun Money' })
+      .closest('.budget-group-panel')
+    expect(funMoneyPanel.querySelector('.budget-group-heading'))
+      .not.toHaveClass('required-entry-missing')
+    expect(within(funMoneyPanel).queryByText('Missing entries')).not.toBeInTheDocument()
+  })
+
+  it('hides the budget review summary when required entries are recorded and plans are within limits', () => {
     const month = getCurrentMonthKey()
     const requiredCategories = buildCategoryGroups()
       .flatMap((group) => group.categories)
-      .filter((category) => category.requiresMonthlyPayment)
+      .filter((category) => category.requiresMonthlyEntry && category.type !== 'allocation')
     const data = createInitialBudgetData(month)
     data.budgetTemplate = Object.fromEntries(
       requiredCategories.map((category) => [category.id, 100]),

@@ -26,7 +26,7 @@ export function formatMoney(cents, options = {}) {
 }
 
 function exceedsPlan(type, actualCents, plannedCents) {
-  if (type === 'income') return false
+  if (type === 'income' || type === 'savings') return false
   const applicablePlan = type === 'allocation' ? Math.max(0, plannedCents) : plannedCents
   return actualCents > applicablePlan
 }
@@ -52,7 +52,7 @@ export function summarizeBudget({ groups, budgets, activities }) {
     const categories = group.categories.map((category) => {
       const categoryPlannedCents = budgets[category.id] ?? 0
       const categoryActualCents = actuals[category.id] ?? 0
-      const requiresMonthlyPayment = Boolean(category.requiresMonthlyPayment)
+      const requiresMonthlyEntry = Boolean(category.requiresMonthlyEntry)
 
       return {
         ...category,
@@ -64,8 +64,10 @@ export function summarizeBudget({ groups, budgets, activities }) {
           categoryActualCents,
           categoryPlannedCents,
         ),
-        isUnpaidRequiredPayment:
-          requiresMonthlyPayment && categoryActualCents <= 0,
+        isMissingRequiredEntry:
+          requiresMonthlyEntry &&
+          categoryPlannedCents > 0 &&
+          categoryActualCents <= 0,
       }
     })
 
@@ -75,8 +77,8 @@ export function summarizeBudget({ groups, budgets, activities }) {
       actualCents,
       remainingCents: plannedCents - actualCents,
       isOverBudget: exceedsPlan(group.type, actualCents, plannedCents),
-      hasUnpaidRequiredPayment: categories.some(
-        (category) => category.isUnpaidRequiredPayment,
+      hasMissingRequiredEntry: categories.some(
+        (category) => category.isMissingRequiredEntry,
       ),
       categories,
     }
@@ -102,9 +104,9 @@ export function summarizeBudget({ groups, budgets, activities }) {
     plannedSavingsCents
   const actualSurplusCents =
     actualIncomeCents - actualExpensesCents - actualDebtCents - actualSavingsCents
-  const perPersonFunMoneyCents = Math.trunc(plannedSurplusCents / 2)
+  const perPersonFunMoneyCents = Math.trunc(actualSurplusCents / 2)
   const firstFunMoneyCents =
-    perPersonFunMoneyCents + (plannedSurplusCents % 2)
+    perPersonFunMoneyCents + (actualSurplusCents % 2)
 
   for (const group of byGroup) {
     if (group.type !== 'allocation') continue
@@ -139,7 +141,7 @@ export function summarizeBudget({ groups, budgets, activities }) {
     plannedSurplusCents,
     actualSurplusCents,
     perPersonFunMoneyCents,
-    plannedFunMoneyCents: plannedSurplusCents,
+    plannedFunMoneyCents: actualSurplusCents,
     actualFunMoneyCents: groupTotal('allocation', 'actualCents'),
     endingBalanceCents: actualSurplusCents - plannedSurplusCents,
   }

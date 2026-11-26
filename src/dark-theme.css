@@ -247,7 +247,6 @@ body,
 .stat-over-budget strong,
 .stat-over-budget small,
 .over-budget-amount,
-.over-budget-label,
 .budget-group-totals .over-budget-amount strong,
 .over-budget .group-summary-amount,
 .over-budget .group-summary-amount small {
@@ -387,17 +386,67 @@ body,
   color: #dce5de;
 }
 
-.cashflow-minus,
-.cashflow-equals {
-  color: #829087 !important;
+.cashflow-strip-heading {
+  color: #e4ece6;
 }
 
 .cashflow-ending {
   border-left-color: #34443a;
 }
 
-.cashflow-ending strong {
+.cashflow-ending strong.cashflow-positive {
   color: #a4d5ae;
+}
+
+.cashflow-ending strong.cashflow-negative {
+  color: #ffaaa1;
+}
+
+.fun-money-checkin-heading h2 {
+  color: #e4ece6;
+}
+
+.fun-money-checkin-heading > p,
+.fun-money-person-detail > span {
+  color: #9eaca2;
+}
+
+.fun-money-person-card {
+  border-color: #34443a;
+  background: #202b23;
+}
+
+.fun-money-person-heading > strong {
+  color: #dce5de;
+}
+
+.fun-money-status-label.is-pending,
+.fun-money-status-label.is-partial {
+  color: #e5cb78;
+}
+
+.fun-money-status-label.is-recorded {
+  color: #9bd0a7;
+}
+
+.fun-money-status-label.is-inactive {
+  color: #9eaca2;
+}
+
+.fun-money-allocation.is-pending,
+.fun-money-allocation.is-partial {
+  background: #332b19;
+  color: #e5cb78;
+}
+
+.fun-money-allocation.is-recorded {
+  background: #1b2b20;
+  color: #9bd0a7;
+}
+
+.fun-money-allocation.is-inactive {
+  background: transparent;
+  color: #9eaca2;
 }
 
 .highlight-budget {
@@ -445,22 +494,26 @@ body,
   color: #ffaaa1;
 }
 
-.budget-review-unpaid {
+.budget-review-required {
   border-color: #6a572b;
   background: #332b19;
   color: #e5cb78;
 }
 
-.group-summary.required-payment-unpaid:not(.over-budget) summary {
+.group-summary.required-entry-missing:not(.over-budget) summary {
   background: #332b19;
 }
 
-.group-summary.required-payment-unpaid:not(.over-budget) .group-summary-name {
+.group-summary.required-entry-missing:not(.over-budget) .group-summary-name {
   color: #e5cb78;
 }
 
-.required-payment-inline {
+.required-entry-inline {
   color: #e5cb78;
+}
+
+.over-budget-inline {
+  color: #ff8f87;
 }
 
 .group-summary.over-budget summary {
@@ -475,16 +528,16 @@ body,
   background: #2a1d1d;
 }
 
-.group-detail-row.unpaid-required-row {
+.group-detail-row.missing-required-row {
   background: #332b19;
 }
 
-.group-detail-row .required-payment-status,
-.budget-category-label .required-payment-status {
+.group-detail-row .required-entry-status,
+.budget-category-label .required-entry-status {
   color: #e5cb78;
 }
 
-.budget-group-heading.required-payment-unpaid:not(.over-budget) {
+.budget-group-heading.required-entry-missing:not(.over-budget) {
   background: #332b19;
 }
 
@@ -496,13 +549,29 @@ body,
   color: #ff8f87;
 }
 
-.required-payment-badge {
+.required-entry-badge {
   background: #51431e;
   color: #e5cb78;
 }
 
-.budget-category-row.unpaid-required-row::before {
+.over-budget-badge {
+  background: #512d2b;
+  color: #ffaaa1;
+}
+
+.budget-category-row.missing-required-row::before {
   background: #332b19;
+}
+
+.loading-screen {
+  color: #dce5de;
+}
+
+.loading-screen::before {
+  border-color: #2b3930;
+  border-top-color: #9bd0a7;
+  border-right-color: #83b68d;
+  box-shadow: 0 0 0 6px rgb(155 208 167 / 8%);
 }
 
 .over-budget-row .currency-input {

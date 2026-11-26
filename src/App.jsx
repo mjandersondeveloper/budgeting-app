@@ -744,11 +744,18 @@ function StatCard({ label, value, note, tone = 'default', icon, overBudget = fal
 function BudgetReviewSummary({ groups }) {
   const categories = groups.flatMap((group) => group.categories)
   const overBudgetCount = categories.filter((category) => category.isOverBudget).length
-  const unpaidRequiredCount = categories.filter(
-    (category) => category.isUnpaidRequiredPayment,
+  const missingRequiredCount = categories.filter(
+    (category) => category.isMissingRequiredEntry,
   ).length
+  const funMoneyGroup = groups.find((group) => group.id === 'fun-money')
+  const incompleteFunMoneyCount = funMoneyGroup
+    ? funMoneyGroup.categories.filter(
+      (category) => category.plannedCents > 0 && category.actualCents < category.plannedCents,
+    ).length
+    : 0
+  const incompleteEntryCount = missingRequiredCount + incompleteFunMoneyCount
 
-  if (overBudgetCount === 0 && unpaidRequiredCount === 0) return null
+  if (overBudgetCount === 0 && incompleteEntryCount === 0) return null
 
   return (
     <aside className="budget-review-summary" aria-label="Budget review" role="status">
@@ -757,9 +764,9 @@ function BudgetReviewSummary({ groups }) {
           {overBudgetCount} {overBudgetCount === 1 ? 'category' : 'categories'} over plan
         </span>
       )}
-      {unpaidRequiredCount > 0 && (
-        <span className="budget-review-item budget-review-unpaid">
-          {unpaidRequiredCount} required payment{unpaidRequiredCount === 1 ? '' : 's'} not recorded
+      {incompleteEntryCount > 0 && (
+        <span className="budget-review-item budget-review-required">
+          {incompleteEntryCount} {incompleteEntryCount === 1 ? 'entry' : 'entries'} not fully recorded
         </span>
       )}
     </aside>
@@ -779,6 +786,7 @@ function OverviewPage({
   const expenseProgress = summary.plannedExpensesCents > 0
     ? Math.min(100, Math.round(summary.actualExpensesCents / summary.plannedExpensesCents * 100))
     : 0
+  const funMoneyGroup = summary.byGroup.find((group) => group.id === 'fun-money')
 
   return (
     <>
@@ -832,7 +840,7 @@ function OverviewPage({
         <StatCard
           label="After expenses & savings"
           value={formatMoney(summary.actualSurplusCents)}
-          note={`plan ${formatMoney(summary.plannedSurplusCents)} · ${formatMoney(summary.perPersonFunMoneyCents)} each`}
+          note="See each person's status below"
           tone={summary.actualSurplusCents < 0 ? 'peach' : 'mint'}
           icon="＝"
         />
@@ -863,7 +871,7 @@ function OverviewPage({
                 : 0
               return (
                 <details
-                  className={`group-summary${group.isOverBudget ? ' over-budget' : ''}${group.hasUnpaidRequiredPayment ? ' required-payment-unpaid' : ''}`}
+                  className={`group-summary${group.isOverBudget ? ' over-budget' : ''}${group.hasMissingRequiredEntry ? ' required-entry-missing' : ''}`}
                   key={group.id}
                 >
                   <summary>
@@ -873,9 +881,11 @@ function OverviewPage({
                       {formatMoney(group.actualCents)}{' '}
                       <small>
                         of {formatMoney(group.plannedCents)}
-                        {group.isOverBudget ? ' · Over plan' : ''}
-                        {group.hasUnpaidRequiredPayment && (
-                          <span className="required-payment-inline"> · Due</span>
+                        {group.isOverBudget && (
+                          <span className="over-budget-inline"> · Over plan</span>
+                        )}
+                        {group.hasMissingRequiredEntry && (
+                          <span className="required-entry-inline"> · Missing</span>
                         )}
                       </small>
                     </span>
@@ -885,14 +895,14 @@ function OverviewPage({
                   <div className="group-detail-list">
                     {group.categories.map((category) => (
                       <div
-                        className={`group-detail-row${category.isOverBudget ? ' over-budget' : ''}${category.isUnpaidRequiredPayment ? ' unpaid-required-row' : ''}`}
+                        className={`group-detail-row${category.isOverBudget ? ' over-budget' : ''}${category.isMissingRequiredEntry ? ' missing-required-row' : ''}`}
                         key={category.id}
                       >
                         <span>{category.name}</span>
                         <span className={category.isOverBudget ? 'over-budget-amount' : ''}>
                           {formatMoney(category.actualCents)} <small>/ {formatMoney(category.plannedCents)}</small>
-                          {category.isUnpaidRequiredPayment && (
-                            <small className="required-payment-status">Not recorded</small>
+                          {category.isMissingRequiredEntry && (
+                            <small className="required-entry-status">Not recorded</small>
                           )}
                         </span>
                       </div>
@@ -928,13 +938,73 @@ function OverviewPage({
         </article>
       </section>
 
-      <section className="cashflow-strip" aria-label="Monthly cash flow">
-        <div><span>Planned expenses</span><strong>{formatMoney(summary.plannedExpensesCents)}</strong></div>
-        <span className="cashflow-minus" aria-hidden="true">−</span>
-        <div><span>Planned savings</span><strong>{formatMoney(summary.plannedSavingsCents)}</strong></div>
-        <span className="cashflow-equals" aria-hidden="true">=</span>
-        <div><span>Equal fun money, each</span><strong>{formatMoney(summary.perPersonFunMoneyCents)}</strong></div>
-        <div className="cashflow-ending"><span>Actual ending balance</span><strong>{formatMoney(summary.endingBalanceCents)}</strong></div>
+      <section className="panel fun-money-checkin" aria-label="Fun money activity check-in">
+        <div className="fun-money-checkin-heading">
+          <div>
+            <p className="eyebrow">FUN MONEY</p>
+            <h2>Activity check-in</h2>
+          </div>
+          <p>Recorded spending compared with each person's allocation.</p>
+        </div>
+        <div className="fun-money-checkin-grid">
+          {funMoneyGroup.categories.map((category) => {
+            const hasPositiveAllocation = category.plannedCents > 0
+            const recordedCents = Math.max(0, category.actualCents)
+            const status = !hasPositiveAllocation
+              ? 'inactive'
+              : recordedCents <= 0
+                ? 'pending'
+                : recordedCents < category.plannedCents
+                  ? 'partial'
+                  : 'recorded'
+            const statusLabel = {
+              inactive: 'No allocation',
+              pending: 'Not recorded',
+              partial: 'Partially recorded',
+              recorded: 'Recorded',
+            }[status]
+            const detail = hasPositiveAllocation
+              ? `${formatMoney(recordedCents)} of ${formatMoney(category.plannedCents)} recorded`
+              : 'No positive allocation this month'
+
+            return (
+              <article className={`fun-money-person-card is-${status}`} key={category.id}>
+                <div className="fun-money-person-heading">
+                  <strong>{category.name.replace(/ Fun Money$/, '')}</strong>
+                  <span className={`fun-money-status-label is-${status}`}>{statusLabel}</span>
+                </div>
+                <div className="fun-money-person-detail">
+                  <strong className={`fun-money-allocation is-${status}`}>
+                    {formatMoney(category.plannedCents)}
+                  </strong>
+                  <span>{detail}</span>
+                </div>
+              </article>
+            )
+          })}
+        </div>
+      </section>
+
+      <section className="cashflow-strip" aria-labelledby="cashflow-strip-heading">
+        <h2 className="cashflow-strip-heading" id="cashflow-strip-heading">
+          Monthly cash flow
+        </h2>
+        <div><span>Actual income</span><strong>{formatMoney(summary.actualIncomeCents)}</strong></div>
+        <div><span>Actual expenses + debt</span><strong>{formatMoney(summary.actualExpensesCents)}</strong></div>
+        <div><span>Actual savings</span><strong>{formatMoney(summary.actualSavingsCents)}</strong></div>
+        <div><span>Fun money available, each</span><strong>{formatMoney(summary.perPersonFunMoneyCents)}</strong></div>
+        <div className="cashflow-ending">
+          <span>Surplus vs. Plan</span>
+          <strong className={
+            summary.endingBalanceCents > 0
+              ? 'cashflow-positive'
+              : summary.endingBalanceCents < 0
+                ? 'cashflow-negative'
+                : undefined
+          }>
+            {formatMoney(summary.endingBalanceCents)}
+          </strong>
+        </div>
       </section>
     </>
   )
@@ -1094,19 +1164,22 @@ function BudgetsPage({
         <div><span>Income planned</span><strong>{formatMoney(summary.plannedIncomeCents)}</strong></div>
         <div><span>Expenses + debt</span><strong>{formatMoney(summary.plannedExpensesCents)}</strong></div>
         <div><span>Savings planned</span><strong>{formatMoney(summary.plannedSavingsCents)}</strong></div>
-        <div className="highlight-budget"><span>Fun money each</span><strong>{formatMoney(summary.perPersonFunMoneyCents)}</strong></div>
+        <div className="highlight-budget"><span>Fun money available each</span><strong>{formatMoney(summary.perPersonFunMoneyCents)}</strong></div>
       </div>
       <form className="budget-groups" key={`${month}-${budgetFormRevision}`} onSubmit={onSave}>
         {groups.map((group) => (
           <section className="panel budget-group-panel" key={group.id}>
             <div
-              className={`budget-group-heading${group.isOverBudget ? ' over-budget' : ''}${group.hasUnpaidRequiredPayment ? ' required-payment-unpaid' : ''}`}
+              className={`budget-group-heading${group.isOverBudget ? ' over-budget' : ''}${group.hasMissingRequiredEntry ? ' required-entry-missing' : ''}`}
             >
               <div>
                 <span className={`group-dot dot-${group.type}`} />
                 <h2>{group.name}</h2>
-                {group.hasUnpaidRequiredPayment && (
-                  <span className="required-payment-badge">Payment due</span>
+                {group.isOverBudget && (
+                  <span className="over-budget-badge">Over plan</span>
+                )}
+                {group.hasMissingRequiredEntry && (
+                  <span className="required-entry-badge">Missing entries</span>
                 )}
               </div>
               <div className="budget-group-controls">
@@ -1123,7 +1196,6 @@ function BudgetsPage({
                   <span className={group.isOverBudget ? 'over-budget-amount' : ''}>
                     <span>Actual</span>
                     <strong>{formatMoney(group.actualCents)}</strong>
-                    {group.isOverBudget && <small className="over-budget-label">Over plan</small>}
                   </span>
                   <span>
                     <span>Plan</span>
@@ -1135,18 +1207,22 @@ function BudgetsPage({
             <div className="budget-category-grid">
               {group.categories.map((category) => (
                 <div
-                  className={`budget-category-row${category.isOverBudget ? ' over-budget-row' : ''}${category.isUnpaidRequiredPayment ? ' unpaid-required-row' : ''}`}
+                  className={`budget-category-row${category.isOverBudget ? ' over-budget-row' : ''}${category.isMissingRequiredEntry ? ' missing-required-row' : ''}`}
                   key={category.id}
                 >
                   <div className="budget-category-label">
                     <strong>{category.name}</strong>
                     <small className={[
                       category.isOverBudget ? 'over-budget-amount' : '',
-                      category.isUnpaidRequiredPayment ? 'required-payment-status' : '',
+                      category.isMissingRequiredEntry ? 'required-entry-status' : '',
                     ].filter(Boolean).join(' ')}>
-                      {formatMoney(category.actualCents)} actual
-                      {category.isOverBudget ? ' · Over plan' : ''}
-                      {category.isUnpaidRequiredPayment ? ' · Not recorded' : ''}
+                      <strong className="budget-category-actual">
+                        {formatMoney(category.actualCents)} actual
+                      </strong>
+                      {category.isOverBudget && (
+                        <span className="over-budget-inline"> · Over plan</span>
+                      )}
+                      {category.isMissingRequiredEntry ? ' · Not recorded' : ''}
                     </small>
                   </div>
                   {category.type === 'allocation' ? (
